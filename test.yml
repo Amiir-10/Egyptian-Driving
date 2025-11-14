@@ -1,0 +1,15 @@
+name: Test Game run
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  build-and-run:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install buil tools
+        run: choco install make -y make mingw
+      - name: Build the project
+        run: make run
