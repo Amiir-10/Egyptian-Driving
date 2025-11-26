@@ -27,9 +27,9 @@ else
     COPY = cp $(1) $(2)
 endif
 
-ifeq ($(WORKFLOWS),"lib/x64")
+ifeq ($(WORKFLOWS),lib/x64)
 	LIB_DIR = lib/x64
-	echo "Using 64-bit libraries"
+	@echo Using 64-bit libraries
 endif
 
 LDFLAGS = -L$(LIB_DIR) -lfreeglut -lopengl32 -lglu32

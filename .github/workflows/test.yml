@@ -15,7 +15,7 @@ jobs:
       - name: Set up environment variables
         shell: cmd
         run: |
-          echo "{WORKFLOWS}={lib/x64}" >> $GITHUB_ENV
+          echo WORKFLOWS=lib/x64 >> $GITHUB_ENV
       - name: Build the project
         shell: cmd
         run: |
