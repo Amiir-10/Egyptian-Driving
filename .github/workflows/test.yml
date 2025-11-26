@@ -15,4 +15,4 @@ jobs:
       - name: Build the project
         shell: cmd
         run: |
-          make SHELL=cmd.exe .SHELLFLAGS=/c run
+          make SHELL=cmd.exe .SHELLFLAGS=/c all
