@@ -17,7 +17,6 @@ LDFLAGS = -L$(LIB_DIR) -lfreeglut -lopengl32 -lglu32
 
 ifeq ($(OS),Windows_NT)
     TARGET := $(TARGET).exe
-	LIB_DIR := lib/x64
     RM = del /Q
     MKDIR = if not exist $(subst /,\,$(1)) mkdir $(subst /,\,$(1))
     RMDIR = if exist $(subst /,\,$(1)) rmdir /S /Q $(subst /,\,$(1))
@@ -27,6 +26,10 @@ else
     MKDIR = mkdir -p $(1)
     RMDIR = rm -rf $(1)
     COPY = cp $(1) $(2)
+endif
+
+ifeq ($(WORKFLOWS),"lib/x64")
+	LIB_DIR = lib/x64
 endif
 
 .PHONY: all
