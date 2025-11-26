@@ -13,4 +13,5 @@ jobs:
         shell: cmd
         run: choco install -y make mingw
       - name: Build the project
-        run: make build
+        shell: cmd
+        run: make run
