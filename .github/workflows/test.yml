@@ -14,4 +14,5 @@ jobs:
         run: choco install -y make mingw
       - name: Build the project
         shell: cmd
-        run: make run
+        run: |
+          make SHELL=cmd.exe .SHELLFLAGS=/c run
