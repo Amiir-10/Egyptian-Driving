@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install build tools (windows)
+        shell: cmd
         run: choco install -y make mingw
       - name: Build the project
-        run: make run
+        run: make build
