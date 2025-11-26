@@ -13,7 +13,6 @@ OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 
 CXXFLAGS = -Wall -Wextra -std=c++11 -I$(INCLUDE_DIR)
 
-LDFLAGS = -L$(LIB_DIR) -lfreeglut -lopengl32 -lglu32
 
 ifeq ($(OS),Windows_NT)
     TARGET := $(TARGET).exe
@@ -31,6 +30,9 @@ endif
 ifeq ($(WORKFLOWS),"lib/x64")
 	LIB_DIR = lib/x64
 endif
+
+LDFLAGS = -L$(LIB_DIR) -lfreeglut -lopengl32 -lglu32
+
 
 .PHONY: all
 all: directories $(BIN_DIR)/$(TARGET)
