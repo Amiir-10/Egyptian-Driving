@@ -12,10 +12,6 @@ jobs:
       - name: Install build tools (windows)
         shell: cmd
         run: choco install -y make mingw
-      - name: Set up environment variables
-        shell: cmd
-        run: |
-          echo WORKFLOWS=lib/x64 >> $GITHUB_ENV
       - name: Build the project
         shell: cmd
         run: |
