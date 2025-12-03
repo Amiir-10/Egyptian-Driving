@@ -1,58 +1,58 @@
 #include <GL/glut.h>
+#include "Game.h"
 
-float rotAng;
+Game game;
 
-void Display(void)
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glPushMatrix();
-    glRotatef(rotAng, 0, 1, 0);
-    glColor3f(0.0f, 0.0f, 0.0f);
-    glutSolidCube(1);
-    glPopMatrix();
-
-    glPushMatrix();
-    glRotatef(-rotAng, 0, 1, 0);
-    glTranslatef(2, 0, 0);
-    glRotatef(rotAng, 1, 0, 0);
-    glColor3f(0.5f, 0.5f, 0.5f);
-    glutSolidSphere(0.5, 25, 25);
-    glPopMatrix();
-
-    glFlush();
+void display() {
+    game.render();
 }
 
-void Anim()
-{
-    rotAng += 0.01;
-
+void timer(int value) {
+    game.update();
     glutPostRedisplay();
+    glutTimerFunc(16, timer, 0); // ~60 FPS
 }
 
-int main(int argc, char **argv)
-{
+void keyboard(unsigned char key, int x, int y) {
+    game.handleInput(key, x, y);
+}
+
+void keyboardUp(unsigned char key, int x, int y) {
+    // Handle key release if needed
+}
+
+void special(int key, int x, int y) {
+    game.handleSpecialInput(key, x, y);
+}
+
+void specialUp(int key, int x, int y) {
+    game.handleSpecialInputUp(key, x, y);
+}
+
+void mouse(int button, int state, int x, int y) {
+    game.handleMouse(button, state, x, y);
+}
+
+void reshape(int w, int h) {
+    game.reshape(w, h);
+}
+
+int main(int argc, char** argv) {
     glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("Egyptian Driving Game");
 
-    glutInitWindowSize(300, 300);
-    glutInitWindowPosition(150, 150);
+    game.init();
 
-    glutCreateWindow("OpenGL - 3D Template");
-    glutDisplayFunc(Display);
-    glutIdleFunc(Anim);
-
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB | GLUT_DEPTH);
-    glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-
-    glEnable(GL_DEPTH_TEST);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(45.0f, 300 / 300, 0.1f, 300.0f);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    gluLookAt(0.0f, 2.0f, 5.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    glutDisplayFunc(display);
+    glutTimerFunc(0, timer, 0); // Start timer immediately
+    glutKeyboardFunc(keyboard);
+    glutSpecialFunc(special);
+    glutSpecialUpFunc(specialUp);
+    
+    glutMouseFunc(mouse);
+    glutReshapeFunc(reshape);
 
     glutMainLoop();
     return 0;
