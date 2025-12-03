@@ -89,8 +89,8 @@ void Game::setCamera() {
         gluLookAt(camX, cameraHeight, camZ, carX, 0.5f, carZ, 0.0f, 1.0f, 0.0f);
     } else {
         // First person (driver's eye)
-        float eyeX = carX + sin(carRot) * 0.2f;
-        float eyeZ = carZ + cos(carRot) * 0.2f;
+        float eyeX = carX + sin(carRot) * 0.5f;
+        float eyeZ = carZ + cos(carRot) * 0.5f;
         float lookX = carX + sin(carRot) * 10.0f;
         float lookZ = carZ + cos(carRot) * 10.0f;
         gluLookAt(eyeX, 0.8f, eyeZ, lookX, 0.8f, lookZ, 0.0f, 1.0f, 0.0f);
