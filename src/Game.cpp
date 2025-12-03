@@ -135,12 +135,22 @@ void Game::render() {
 
         // Draw Ground
         glColor3f(0.9f, 0.8f, 0.6f); // Sand
-        glBegin(GL_QUADS);
+        // Draw Ground (Tessellated for lighting)
+        glColor3f(0.9f, 0.8f, 0.6f); // Sand
         glNormal3f(0, 1, 0);
-        glVertex3f(-100, 0, -100);
-        glVertex3f(100, 0, -100);
-        glVertex3f(100, 0, 100);
-        glVertex3f(-100, 0, 100);
+        
+        float groundSize = 200.0f;
+        float tileSize = 2.0f; // Smaller tiles for better lighting
+        
+        glBegin(GL_QUADS);
+        for (float x = -groundSize/2; x < groundSize/2; x += tileSize) {
+            for (float z = -groundSize/2; z < groundSize/2; z += tileSize) {
+                glVertex3f(x, 0, z);
+                glVertex3f(x + tileSize, 0, z);
+                glVertex3f(x + tileSize, 0, z + tileSize);
+                glVertex3f(x, 0, z + tileSize);
+            }
+        }
         glEnd();
 
         if (currentLevel) currentLevel->render(playerCar);
