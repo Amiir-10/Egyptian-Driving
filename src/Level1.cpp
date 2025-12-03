@@ -60,6 +60,7 @@ void Level1::render(Car& car) {
     // Infinite Road Logic
     // Draw road from [playerZ - 50] to [playerZ + 200]
     drawRoad(playerZ);
+    drawGround(playerZ);
     drawBuildings(playerZ);
     
     // Update/Spawn Obstacles based on playerZ (Hack: doing logic in render or separate update)
@@ -222,4 +223,29 @@ bool Level1::checkCollisions(Car& car) {
 
 bool Level1::isFinished(Car& car) {
     return car.getZ() > 1000.0f;
+}
+
+void Level1::drawGround(float playerZ) {
+    float startZ = floor(playerZ / 10.0f) * 10.0f - 50.0f;
+    float endZ = startZ + 300.0f;
+    float groundWidth = 100.0f; // Width of the grass strips
+
+    glColor3f(0.0f, 0.8f, 0.0f); // Green Grass
+    glNormal3f(0, 1, 0);
+
+    // Left Side
+    glBegin(GL_QUADS);
+    glVertex3f(-roadWidth/2 - groundWidth, 0.01f, startZ);
+    glVertex3f(-roadWidth/2, 0.01f, startZ);
+    glVertex3f(-roadWidth/2, 0.01f, endZ);
+    glVertex3f(-roadWidth/2 - groundWidth, 0.01f, endZ);
+    glEnd();
+
+    // Right Side
+    glBegin(GL_QUADS);
+    glVertex3f(roadWidth/2, 0.01f, startZ);
+    glVertex3f(roadWidth/2 + groundWidth, 0.01f, startZ);
+    glVertex3f(roadWidth/2 + groundWidth, 0.01f, endZ);
+    glVertex3f(roadWidth/2, 0.01f, endZ);
+    glEnd();
 }

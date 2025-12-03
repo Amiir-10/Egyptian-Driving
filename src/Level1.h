@@ -31,6 +31,7 @@ private:
     
     void spawnCar();
     void drawRoad(float playerZ);
+    void drawGround(float playerZ);
     void drawBuildings(float playerZ);
     void drawObstacles();
     void drawCollectibles();
