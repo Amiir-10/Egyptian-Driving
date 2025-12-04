@@ -23,6 +23,10 @@ public:
     float getZ() const { return z; }
     float getRotation() const { return rotation; }
     float getSpeed() const { return speed; }
+    bool isLightsOn() const { return lightsOn; }
+    
+    // Setters
+    void setZ(float newZ) { z = newZ; }
 
 private:
     float x, z;

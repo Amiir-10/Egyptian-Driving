@@ -14,7 +14,7 @@ public:
     Level2();
     void init() override;
     void update() override;
-    void render(Car& car) override;
+    void render(Car& car, bool isNight) override;
     bool checkCollisions(Car& car) override;
     bool isFinished(Car& car) override;
 
@@ -22,6 +22,8 @@ private:
     std::vector<Obstacle> obstacles; // Cones, cars, Sayes
     ParkingSpot targetSpot;
     bool parked;
+    float parkingTimer;
+    bool isParking;
     
     void drawParkingLot();
     void drawCones();

@@ -5,6 +5,8 @@
 
 Level2::Level2() {
     parked = false;
+    parkingTimer = 0.0f;
+    isParking = false;
 }
 
 void Level2::init() {
@@ -13,8 +15,8 @@ void Level2::init() {
     // Target Spot
     targetSpot.x = 10.0f;
     targetSpot.z = 20.0f;
-    targetSpot.width = 3.0f;
-    targetSpot.length = 5.0f;
+    targetSpot.width = 2.5f; // Was 3.0
+    targetSpot.length = 4.0f; // Was 5.0
 
     // Add Cones around
     Obstacle cone;
@@ -45,11 +47,36 @@ void Level2::update() {
     // Maybe animate Sayes waving?
 }
 
-void Level2::render(Car& car) {
+void Level2::render(Car& car, bool /*isNight*/) {
     drawParkingLot();
     drawCones();
     drawSayes();
     drawMirror(car);
+    
+    if (isParking && !parked) {
+        // Draw Countdown
+        glDisable(GL_LIGHTING);
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0, 800, 0, 600);
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+        
+        glColor3f(1.0f, 1.0f, 0.0f);
+        std::string timeStr = "Parking: " + std::to_string(3.0f - parkingTimer).substr(0, 3) + "s";
+        glRasterPos2f(350, 500);
+        for (char c : timeStr) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+        }
+    
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glEnable(GL_LIGHTING);
+    }
 }
 
 void Level2::drawParkingLot() {
@@ -184,15 +211,32 @@ bool Level2::checkCollisions(Car& car) {
     }
     
     // Check parking
-    if (std::abs(carX - targetSpot.x) < 0.5f && 
-        std::abs(carZ - targetSpot.z) < 0.5f &&
-        std::abs(car.getSpeed()) < 0.01f) {
-        parked = true;
+    // Target Spot: x=10, z=20, w=2.5, l=4.0
+    // Car Visuals: w=0.8, l=1.8 (from Car.cpp glScalef)
+    // We use slightly larger bounding box for safety
+    
+    float carHalfW = 0.5f; // Visual is 0.4
+    float carHalfL = 1.0f; // Visual is 0.9
+    
+    bool insideX = (carX - carHalfW >= targetSpot.x - targetSpot.width/2) && 
+                   (carX + carHalfW <= targetSpot.x + targetSpot.width/2);
+    bool insideZ = (carZ - carHalfL >= targetSpot.z - targetSpot.length/2) && 
+                   (carZ + carHalfL <= targetSpot.z + targetSpot.length/2);
+                   
+    if (insideX && insideZ && std::abs(car.getSpeed()) < 0.01f) {
+        isParking = true;
+        parkingTimer += 0.016f; // Approx 60 FPS
+        if (parkingTimer >= 3.0f) {
+            parked = true;
+        }
+    } else {
+        isParking = false;
+        parkingTimer = 0.0f;
     }
 
     return false;
 }
 
-bool Level2::isFinished(Car& car) {
+bool Level2::isFinished(Car& /*car*/) {
     return parked;
 }

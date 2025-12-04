@@ -6,6 +6,7 @@
 Level1::Level1() {
     roadLength = 200.0f;
     roadWidth = 20.0f;
+    wasLightsOn = false;
 }
 
 void Level1::init() {
@@ -40,6 +41,11 @@ void Level1::spawnCar() {
     car.length = 4.0f;
     car.speed = 0.05f + ((rand() % 5) / 100.0f); // Slower speed (0.05 - 0.1)
     car.active = false; // Inactive until placed
+    
+    car.targetX = 0;
+    car.isMovingAside = false;
+    car.originalX = 0;
+    
     cars.push_back(car);
 }
 
@@ -54,13 +60,15 @@ void Level1::update() {
     // For now, I'll implement the logic assuming I have 'playerZ'.
 }
 
-void Level1::render(Car& car) {
+void Level1::render(Car& car, bool isNight) {
     float playerZ = car.getZ();
     
     // Infinite Road Logic
     // Draw road from [playerZ - 50] to [playerZ + 200]
     drawRoad(playerZ);
+    drawGround(playerZ);
     drawBuildings(playerZ);
+    drawLampPosts(playerZ, isNight);
     
     // Update/Spawn Obstacles based on playerZ (Hack: doing logic in render or separate update)
     // Ideally logic should be in update.
@@ -164,26 +172,74 @@ bool Level1::checkCollisions(Car& car) {
     // Ideally we should update the Level::update signature.
     
     // Spawn new cars ahead
+    // Spawn new cars ahead
     for (auto& obs : cars) {
         if (!obs.active) {
             if (rand() % 100 < 2) { // Chance to spawn
-                obs.active = true;
-                obs.x = (rand() % (int)roadWidth) - (roadWidth / 2);
-                obs.z = carZ + 100 + (rand() % 50);
-                obs.speed = 0.05f + ((rand() % 5) / 100.0f);
+                // Spawn strictly on road (width 20, so -10 to 10). Keep away from edges.
+                // Range: -8 to 8
+                float newX = (rand() % 16) - 8.0f; 
+                float newZ = carZ + 100 + (rand() % 50);
+                
+                // Check overlap with existing active cars
+                bool overlap = false;
+                for (const auto& other : cars) {
+                    if (other.active) {
+                        if (std::abs(newX - other.x) < 4.0f && std::abs(newZ - other.z) < 10.0f) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!overlap) {
+                    obs.active = true;
+                    obs.x = newX;
+                    obs.z = newZ;
+                    obs.speed = 0.05f + ((rand() % 5) / 100.0f);
+                    
+                    obs.originalX = obs.x;
+                    obs.targetX = obs.x;
+                    obs.isMovingAside = false;
+                }
             }
         } else {
             // Move car
-            obs.z += obs.speed; // Move forward (or backward relative to player?)
-            // If traffic is moving same direction:
-            // obs.z += obs.speed;
+            obs.z += obs.speed; 
             
-            // Despawn if too far behind
-            if (obs.z < carZ - 20) {
+            // Smart Behavior: Move aside if illuminated (Flash Trigger)
+            bool lightsOn = car.isLightsOn();
+            bool justFlashed = lightsOn && !wasLightsOn;
+            
+            if (justFlashed) {
+                // Check if in front and within REDUCED range
+                float distZ = obs.z - carZ;
+                if (distZ > 0 && distZ < 15.0f) { // Reduced range
+                    // Check if in same lane (roughly)
+                    if (std::abs(obs.x - carX) < 4.0f) {
+                        obs.isMovingAside = true;
+                        // Decide direction: Move away from center or just to shoulder
+                        if (obs.x > 0) obs.targetX = obs.x + 6.0f;
+                        else obs.targetX = obs.x - 6.0f;
+                    }
+                }
+            }
+            
+            // Interpolate position (SLOWER)
+            if (obs.isMovingAside) {
+                obs.x += (obs.targetX - obs.x) * 0.01f; // Reduced from 0.05 to 0.01
+            }
+            
+            // Despawn if too far behind OR if on grass
+            // Road width is 20 (-10 to 10). If |x| > 10, it's on grass.
+            if (obs.z < carZ - 20 || std::abs(obs.x) > 10.0f) {
                 obs.active = false;
             }
         }
     }
+    
+    // Update light state for next frame
+    wasLightsOn = car.isLightsOn();
 
     // Check obstacles
     for (auto& obs : cars) {
@@ -215,11 +271,182 @@ bool Level1::checkCollisions(Car& car) {
         }
     }
 
+    // Check Lamp Posts
+    // Lamp posts are at +/- (roadWidth/2 + 2.0f) = +/- 12.0f
+    // Spaced every 30.0f, offset by 15.0f
+    // Formula: z = k * 30 + 15
+    // We can check if car is near the sides first
+    if (std::abs(carX) > roadWidth/2 + 1.0f) { // Near sides
+        // Check Z alignment with posts
+        // Normalize Z to find nearest post
+        // z - 15 = k * 30
+        // (z - 15) / 30 = k
+        float localZ = carZ - 15.0f;
+        float nearestK = round(localZ / 30.0f);
+        float nearestPostZ = nearestK * 30.0f + 15.0f;
+        
+        if (std::abs(carZ - nearestPostZ) < 1.0f) { // Close to post Z
+            return true; // Collision with lamp post
+        }
+    }
+
+    // Check Buildings
+    // Buildings are at +/- (roadWidth/2 + 10) = +/- 20.0f
+    // Width (X) is 10.0f, so they span [15, 25] and [-25, -15].
+    // Length (Z) is 20.0f. Spaced every 30.0f.
+    // Centered at k * 30. Spans [k*30 - 10, k*30 + 10].
+    
+    // Check X first (simple bounding box)
+    // Car width is approx 2.0f.
+    // If carX > 15 - 1 = 14 (Right side) or carX < -14 (Left side)
+    if (std::abs(carX) > 14.0f) {
+        // Check Z
+        // Normalize Z to nearest building center
+        // Building centers are at multiples of 30.
+        float localZ = carZ;
+        float nearestK = round(localZ / 30.0f);
+        float nearestBuildingZ = nearestK * 30.0f;
+        
+        // Check if within length of building (20 total, so +/- 10)
+        // Add car length (approx 4.0f, so +/- 2.0f)
+        if (std::abs(carZ - nearestBuildingZ) < 10.0f + 2.0f) {
+            return true; // Collision with building
+        }
+    }
+
     return false;
 }
 
-
-
 bool Level1::isFinished(Car& car) {
     return car.getZ() > 1000.0f;
+}
+
+void Level1::drawGround(float playerZ) {
+    float startZ = floor(playerZ / 10.0f) * 10.0f - 50.0f;
+    float endZ = startZ + 300.0f;
+    float groundWidth = 100.0f; // Width of the grass strips
+
+    glColor3f(0.0f, 0.8f, 0.0f); // Green Grass
+    glNormal3f(0, 1, 0);
+
+    // Left Side
+    glBegin(GL_QUADS);
+    glVertex3f(-roadWidth/2 - groundWidth, 0.01f, startZ);
+    glVertex3f(-roadWidth/2, 0.01f, startZ);
+    glVertex3f(-roadWidth/2, 0.01f, endZ);
+    glVertex3f(-roadWidth/2 - groundWidth, 0.01f, endZ);
+    glEnd();
+
+    // Right Side
+    glBegin(GL_QUADS);
+    glVertex3f(roadWidth/2, 0.01f, startZ);
+    glVertex3f(roadWidth/2 + groundWidth, 0.01f, startZ);
+    glVertex3f(roadWidth/2 + groundWidth, 0.01f, endZ);
+    glVertex3f(roadWidth/2, 0.01f, endZ);
+    glEnd();
+}
+
+void Level1::drawLampPosts(float playerZ, bool isNight) {
+    float startZ = floor(playerZ / 30.0f) * 30.0f - 60.0f;
+    float endZ = startZ + 300.0f;
+
+    for (float z = startZ; z < endZ; z += 30.0f) {
+        // Left Side
+        glPushMatrix();
+        glTranslatef(-roadWidth/2 - 2.0f, 0.0f, z + 15.0f); // Offset from buildings
+        
+        // Pole
+        glColor3f(0.3f, 0.3f, 0.3f); // Gray
+        glPushMatrix();
+        glRotatef(-90, 1, 0, 0);
+        GLUquadricObj *qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.3, 0.3, 6.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Arm
+        glPushMatrix();
+        glTranslatef(0.0f, 6.0f, 0.0f);
+        glRotatef(90, 0, 1, 0); // Point towards road
+        qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.2, 0.2, 3.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Lamp
+        glPushMatrix();
+        glTranslatef(3.0f, 5.8f, 0.0f); // End of arm
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glutSolidSphere(0.4, 10, 10);
+
+        // Light Beam (Night only)
+        if (isNight) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE); // Don't write to depth buffer for transparent objects
+            glColor4f(1.0f, 1.0f, 0.8f, 0.15f); // More transparent (was 0.3)
+            
+            glPushMatrix();
+            glRotatef(90, 1, 0, 0); // Point down
+            // Flip cone: Tip at 0, Base at Length
+            glTranslatef(0.0f, 0.0f, 6.0f); 
+            glScalef(1.0f, 1.0f, -1.0f);
+            glutSolidCone(2.0, 6.0, 10, 10); // Wide cone down to ground
+            glPopMatrix();
+            
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
+        glPopMatrix();
+        glPopMatrix();
+
+
+        // Right Side
+        glPushMatrix();
+        glTranslatef(roadWidth/2 + 2.0f, 0.0f, z + 15.0f);
+        
+        // Pole
+        glColor3f(0.3f, 0.3f, 0.3f);
+        glPushMatrix();
+        glRotatef(-90, 1, 0, 0);
+        qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.3, 0.3, 6.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Arm
+        glPushMatrix();
+        glTranslatef(0.0f, 6.0f, 0.0f);
+        glRotatef(-90, 0, 1, 0); // Point towards road (negative)
+        qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.2, 0.2, 3.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Lamp
+        glPushMatrix();
+        glTranslatef(-3.0f, 5.8f, 0.0f);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glutSolidSphere(0.4, 10, 10);
+
+        // Light Beam (Night only)
+        if (isNight) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+            glColor4f(1.0f, 1.0f, 0.8f, 0.15f);
+            
+            glPushMatrix();
+            glRotatef(90, 1, 0, 0);
+            glTranslatef(0.0f, 0.0f, 6.0f); 
+            glScalef(1.0f, 1.0f, -1.0f);
+            glutSolidCone(2.0, 6.0, 10, 10);
+            glPopMatrix();
+            
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
+        glPopMatrix();
+        glPopMatrix();
+    }
 }

@@ -81,13 +81,105 @@ void Car::draw() {
 
     // Headlights
     if (lightsOn) {
-        // Setup spotlight logic here or in drawBody
-        // For now, just visual cones
+        glEnable(GL_LIGHT1);
+        glEnable(GL_LIGHT2);
+
+        // Light properties
+        GLfloat lightCol[] = { 1.0f, 1.0f, 0.8f, 1.0f }; // Yellowish
+        GLfloat lightAmb[] = { 0.0f, 0.0f, 0.0f, 1.0f }; // NO AMBIENT to avoid global filter effect
+        
+        // Spotlight properties
+        GLfloat spotDir[] = { 0.0f, -0.5f, 1.0f }; // Down and forward
+        GLfloat spotCutoff = 30.0f; // Narrower cone
+        GLfloat spotExp = 10.0f;    // More focused towards center
+
+        // Attenuation (Makes light fade with distance)
+        // Formula: 1 / (Kc + Kl*d + Kq*d^2)
+        GLfloat Kc = 1.0f;
+        GLfloat Kl = 0.1f;
+        GLfloat Kq = 0.05f;
+
+        // Enable Blending for light beams
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        // Left Headlight
         glPushMatrix();
-        glTranslatef(0.3f, 0.0f, 1.0f);
-        glColor3f(1.0f, 1.0f, 0.8f);
-        // glutSolidCone(0.1, 0.5, 10, 2); // Visual representation
+        glTranslatef(-0.3f, 0.0f, 0.9f); // Front Left
+        
+        // Visual representation (The bulb)
+        glDisable(GL_LIGHTING);
+        glColor3f(1.0f, 1.0f, 0.5f);
+        glutSolidSphere(0.1, 10, 10);
+        
+        // Light Beam (Volumetric effect)
+        glColor4f(1.0f, 1.0f, 0.8f, 0.2f); // Transparent yellow
+        glPushMatrix();
+        glRotatef(10, 1, 0, 0); // Angle down slightly (was 20, now 10)
+        // Cone logic: Tip at 0, Base at Length
+        // glutSolidCone draws Base at 0, Tip at Length
+        // We want the opposite: Tip at 0, Base at Length
+        // So we translate to Length, and scale Z by -1 to flip it back to 0
+        glTranslatef(0.0f, 0.0f, 4.0f); 
+        glScalef(1.0f, 1.0f, -1.0f);
+        glutSolidCone(0.5, 4.0, 10, 10);
         glPopMatrix();
+
+        glEnable(GL_LIGHTING);
+
+        // The Light Source
+        GLfloat pos1[] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Relative to this pushmatrix
+        glLightfv(GL_LIGHT1, GL_POSITION, pos1);
+        glLightfv(GL_LIGHT1, GL_DIFFUSE, lightCol);
+        glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmb);
+        glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spotDir);
+        glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, spotCutoff);
+        glLightf(GL_LIGHT1, GL_SPOT_EXPONENT, spotExp);
+        glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, Kc);
+        glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, Kl);
+        glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, Kq);
+        
+        glPopMatrix();
+
+        // Right Headlight
+        glPushMatrix();
+        glTranslatef(0.3f, 0.0f, 0.9f); // Front Right
+        
+        // Visual representation
+        glDisable(GL_LIGHTING);
+        glColor3f(1.0f, 1.0f, 0.5f);
+        glutSolidSphere(0.1, 10, 10);
+
+        // Light Beam (Volumetric effect)
+        glColor4f(1.0f, 1.0f, 0.8f, 0.2f); // Transparent yellow
+        glPushMatrix();
+        glRotatef(10, 1, 0, 0); // Angle down slightly (was 20, now 10)
+        glTranslatef(0.0f, 0.0f, 4.0f); 
+        glScalef(1.0f, 1.0f, -1.0f);
+        glutSolidCone(0.5, 4.0, 10, 10);
+        glPopMatrix();
+
+        glEnable(GL_LIGHTING);
+
+        // The Light Source
+        GLfloat pos2[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        glLightfv(GL_LIGHT2, GL_POSITION, pos2);
+        glLightfv(GL_LIGHT2, GL_DIFFUSE, lightCol);
+        glLightfv(GL_LIGHT2, GL_AMBIENT, lightAmb);
+        glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, spotDir);
+        glLightf(GL_LIGHT2, GL_SPOT_CUTOFF, spotCutoff);
+        glLightf(GL_LIGHT2, GL_SPOT_EXPONENT, spotExp);
+        glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, Kc);
+        glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, Kl);
+        glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, Kq);
+
+        glPopMatrix();
+
+        glDisable(GL_BLEND);
+
+    } else {
+        glDisable(GL_LIGHT1);
+        glDisable(GL_LIGHT2);
     }
 
     glPopMatrix();

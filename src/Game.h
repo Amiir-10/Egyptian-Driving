@@ -9,6 +9,7 @@
 enum GameState {
     MENU,
     LEVEL1,
+    LEVEL1_WIN,
     LEVEL2,
     GAME_OVER,
     WIN
@@ -45,6 +46,9 @@ private:
     void setCamera();
     void drawText(float x, float y, std::string text);
     void drawMenu();
+    void drawGameOver();
+    void drawLevel1Win();
+    void drawWin();
     void drawHUD();
 };
 

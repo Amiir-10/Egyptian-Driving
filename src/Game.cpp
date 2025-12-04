@@ -43,13 +43,13 @@ void Game::update() {
         currentLevel->update();
         
         if (currentLevel->checkCollisions(playerCar)) {
-            playerCar.reset(0, 0); // Reset on collision
+            currentState = GAME_OVER;
         }
         
         if (currentLevel->isFinished(playerCar)) {
             delete currentLevel;
             currentLevel = nullptr;
-            currentState = LEVEL2;
+            currentState = LEVEL1_WIN;
         }
 
         // Day/Night cycle
@@ -67,11 +67,11 @@ void Game::update() {
         currentLevel->update();
 
         if (currentLevel->checkCollisions(playerCar)) {
-            if (currentLevel->isFinished(playerCar)) {
-                currentState = WIN; // Parked!
-            } else {
-                playerCar.reset(0, 0); // Hit obstacle
-            }
+            currentState = GAME_OVER;
+        }
+        
+        if (currentLevel->isFinished(playerCar)) {
+            currentState = WIN; // Parked!
         }
     }
     glutPostRedisplay();
@@ -89,8 +89,8 @@ void Game::setCamera() {
         gluLookAt(camX, cameraHeight, camZ, carX, 0.5f, carZ, 0.0f, 1.0f, 0.0f);
     } else {
         // First person (driver's eye)
-        float eyeX = carX + sin(carRot) * 0.2f;
-        float eyeZ = carZ + cos(carRot) * 0.2f;
+        float eyeX = carX + sin(carRot) * 0.5f;
+        float eyeZ = carZ + cos(carRot) * 0.5f;
         float lookX = carX + sin(carRot) * 10.0f;
         float lookZ = carZ + cos(carRot) * 10.0f;
         gluLookAt(eyeX, 0.8f, eyeZ, lookX, 0.8f, lookZ, 0.0f, 1.0f, 0.0f);
@@ -98,22 +98,40 @@ void Game::setCamera() {
 }
 
 void Game::setupLights() {
-    // Simple day/night cycle logic
-    float ambient = 0.2f;
-    float diffuse = 0.8f;
+    // Smooth Day/Night Cycle
+    // brightness: 0.0 (Midnight) to 1.0 (Noon)
+    // dayTime goes 0..1. 0.5 is Noon.
+    // cos(0) = 1, cos(pi) = -1.
+    // We want max brightness at 0.5 (Noon).
+    // cos(0.5 * 2 * pi) = cos(pi) = -1. Wait.
+    // Let's use -cos.
+    // -cos(0) = -1 (Night). -cos(pi) = 1 (Noon).
+    // range -1 to 1.
+    // brightness = ( -cos(dayTime * 2 * M_PI) + 1.0 ) / 2.0;
     
-    if (dayTime > 0.75f || dayTime < 0.25f) { // Night
-        ambient = 0.1f;
-        diffuse = 0.2f;
-        glClearColor(0.0f, 0.0f, 0.1f, 1.0f); // Dark blue sky
-    } else { // Day
-        glClearColor(0.5f, 0.8f, 1.0f, 1.0f); // Light blue sky
-    }
+    float brightness = (-cos(dayTime * 2 * M_PI) + 1.0f) / 2.0f;
+
+    // Interpolate Sky Color
+    // Night: 0.0, 0.0, 0.1
+    // Day: 0.5, 0.8, 1.0
+    float skyR = 0.0f * (1.0f - brightness) + 0.5f * brightness;
+    float skyG = 0.0f * (1.0f - brightness) + 0.8f * brightness;
+    float skyB = 0.1f * (1.0f - brightness) + 1.0f * brightness;
+    
+    glClearColor(skyR, skyG, skyB, 1.0f);
+
+    // Interpolate Light Intensity
+    float ambient = 0.1f * (1.0f - brightness) + 0.3f * brightness;
+    float diffuse = 0.2f * (1.0f - brightness) + 0.8f * brightness;
 
     GLfloat lightPos[] = { 0.0f, 10.0f, 0.0f, 1.0f };
     // Rotate sun based on time
+    // 0.0 = Midnight (Down), 0.5 = Noon (Up)
+    // sin(0) = 0, cos(0) = 1.
+    // We want Y to be -100 at 0.0, 100 at 0.5.
+    // -cos(0) = -1. -cos(pi) = 1.
     lightPos[0] = sin(dayTime * 2 * M_PI) * 100.0f;
-    lightPos[1] = cos(dayTime * 2 * M_PI) * 100.0f;
+    lightPos[1] = -cos(dayTime * 2 * M_PI) * 100.0f;
 
     GLfloat lightAmb[] = { ambient, ambient, ambient, 1.0f };
     GLfloat lightDif[] = { diffuse, diffuse, diffuse, 1.0f };
@@ -129,21 +147,42 @@ void Game::render() {
 
     if (currentState == MENU) {
         drawMenu();
+    } else if (currentState == GAME_OVER) {
+        drawGameOver();
+    } else if (currentState == LEVEL1_WIN) {
+        drawLevel1Win();
+    } else if (currentState == WIN) {
+        drawWin();
     } else {
         setCamera();
         setupLights();
 
         // Draw Ground
         glColor3f(0.9f, 0.8f, 0.6f); // Sand
-        glBegin(GL_QUADS);
+        // Draw Ground (Tessellated for lighting)
+        glColor3f(0.9f, 0.8f, 0.6f); // Sand
         glNormal3f(0, 1, 0);
-        glVertex3f(-100, 0, -100);
-        glVertex3f(100, 0, -100);
-        glVertex3f(100, 0, 100);
-        glVertex3f(-100, 0, 100);
+        
+        float groundSize = 200.0f;
+        float tileSize = 2.0f; // Smaller tiles for better lighting
+        
+        glBegin(GL_QUADS);
+        for (float x = -groundSize/2; x < groundSize/2; x += tileSize) {
+            for (float z = -groundSize/2; z < groundSize/2; z += tileSize) {
+                glVertex3f(x, 0, z);
+                glVertex3f(x + tileSize, 0, z);
+                glVertex3f(x + tileSize, 0, z + tileSize);
+                glVertex3f(x, 0, z + tileSize);
+            }
+        }
         glEnd();
 
-        if (currentLevel) currentLevel->render(playerCar);
+        if (currentLevel) {
+            // Calculate brightness again for logic (or store it)
+            float brightness = (-cos(dayTime * 2 * M_PI) + 1.0f) / 2.0f;
+            bool isNight = (brightness < 0.3f); // Turn on lights when it gets dark enough
+            currentLevel->render(playerCar, isNight);
+        }
         playerCar.draw();
     }
 
@@ -156,8 +195,21 @@ void Game::handleInput(unsigned char key, int x, int y) {
     
     if (currentState == MENU) {
         if (key == 13) currentState = LEVEL1; // Enter
+    } else if (currentState == GAME_OVER) {
+        if (key == 13) {
+            currentState = LEVEL1;
+            if (currentLevel) delete currentLevel;
+            currentLevel = nullptr; // Will be recreated in update
+        }
+    } else if (currentState == LEVEL1_WIN) {
+        if (key == 13) currentState = LEVEL2; // Enter
     } else {
         if (key == 'l' || key == 'L') playerCar.toggleLights();
+        
+        // Developer Cheat Code: Skip Level 1
+        if ((key == 'o' || key == 'O') && currentState == LEVEL1) {
+            playerCar.setZ(900.0f);
+        }
     }
 }
 
@@ -216,6 +268,24 @@ void Game::drawMenu() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     drawText(300, 400, "EGYPTIAN DRIVING GAME");
     drawText(280, 300, "Press ENTER to Start Level 1");
+}
+
+void Game::drawGameOver() {
+    glClearColor(0.2f, 0.0f, 0.0f, 1.0f); // Dark Red
+    drawText(300, 400, "You Crashed! Game Lost!");
+    drawText(280, 300, "Press ENTER to Restart");
+}
+
+void Game::drawLevel1Win() {
+    glClearColor(0.0f, 0.2f, 0.0f, 1.0f); // Dark Green
+    drawText(300, 400, "Level 1 Complete!");
+    drawText(280, 300, "Press ENTER to Continue to Level 2");
+}
+
+void Game::drawWin() {
+    glClearColor(0.0f, 0.3f, 0.0f, 1.0f); // Green
+    drawText(300, 400, "You Won!");
+    drawText(250, 300, "You are now qualified to drive in Egypt!");
 }
 
 void Game::drawHUD() {
