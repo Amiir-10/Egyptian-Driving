@@ -45,7 +45,7 @@ void Level2::update() {
     // Maybe animate Sayes waving?
 }
 
-void Level2::render(Car& car) {
+void Level2::render(Car& car, bool isNight) {
     drawParkingLot();
     drawCones();
     drawSayes();
