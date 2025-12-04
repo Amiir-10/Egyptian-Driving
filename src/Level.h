@@ -17,7 +17,7 @@ public:
     virtual ~Level() {}
     virtual void init() = 0;
     virtual void update() = 0;
-    virtual void render(Car& car) = 0;
+    virtual void render(Car& car, bool isNight) = 0;
     virtual bool checkCollisions(Car& car) = 0;
     virtual bool isFinished(Car& car) = 0;
 };

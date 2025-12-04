@@ -153,7 +153,10 @@ void Game::render() {
         }
         glEnd();
 
-        if (currentLevel) currentLevel->render(playerCar);
+        if (currentLevel) {
+            bool isNight = (dayTime > 0.75f || dayTime < 0.25f);
+            currentLevel->render(playerCar, isNight);
+        }
         playerCar.draw();
     }
 

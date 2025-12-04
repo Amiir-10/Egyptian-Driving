@@ -19,7 +19,7 @@ public:
     Level1();
     void init() override;
     void update() override;
-    void render(Car& car) override;
+    void render(Car& car, bool isNight) override;
     bool checkCollisions(Car& car) override;
     bool isFinished(Car& car) override;
 
@@ -33,6 +33,7 @@ private:
     void drawRoad(float playerZ);
     void drawGround(float playerZ);
     void drawBuildings(float playerZ);
+    void drawLampPosts(float playerZ, bool isNight);
     void drawObstacles();
     void drawCollectibles();
 };

@@ -54,7 +54,7 @@ void Level1::update() {
     // For now, I'll implement the logic assuming I have 'playerZ'.
 }
 
-void Level1::render(Car& car) {
+void Level1::render(Car& car, bool isNight) {
     float playerZ = car.getZ();
     
     // Infinite Road Logic
@@ -62,6 +62,7 @@ void Level1::render(Car& car) {
     drawRoad(playerZ);
     drawGround(playerZ);
     drawBuildings(playerZ);
+    drawLampPosts(playerZ, isNight);
     
     // Update/Spawn Obstacles based on playerZ (Hack: doing logic in render or separate update)
     // Ideally logic should be in update.
@@ -248,4 +249,109 @@ void Level1::drawGround(float playerZ) {
     glVertex3f(roadWidth/2 + groundWidth, 0.01f, endZ);
     glVertex3f(roadWidth/2, 0.01f, endZ);
     glEnd();
+}
+
+void Level1::drawLampPosts(float playerZ, bool isNight) {
+    float startZ = floor(playerZ / 30.0f) * 30.0f - 60.0f;
+    float endZ = startZ + 300.0f;
+
+    for (float z = startZ; z < endZ; z += 30.0f) {
+        // Left Side
+        glPushMatrix();
+        glTranslatef(-roadWidth/2 - 2.0f, 0.0f, z + 15.0f); // Offset from buildings
+        
+        // Pole
+        glColor3f(0.3f, 0.3f, 0.3f); // Gray
+        glPushMatrix();
+        glRotatef(-90, 1, 0, 0);
+        GLUquadricObj *qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.3, 0.3, 6.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Arm
+        glPushMatrix();
+        glTranslatef(0.0f, 6.0f, 0.0f);
+        glRotatef(90, 0, 1, 0); // Point towards road
+        qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.2, 0.2, 3.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Lamp
+        glPushMatrix();
+        glTranslatef(3.0f, 5.8f, 0.0f); // End of arm
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glutSolidSphere(0.4, 10, 10);
+
+        // Light Beam (Night only)
+        if (isNight) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE); // Don't write to depth buffer for transparent objects
+            glColor4f(1.0f, 1.0f, 0.8f, 0.15f); // More transparent (was 0.3)
+            
+            glPushMatrix();
+            glRotatef(90, 1, 0, 0); // Point down
+            // Flip cone: Tip at 0, Base at Length
+            glTranslatef(0.0f, 0.0f, 6.0f); 
+            glScalef(1.0f, 1.0f, -1.0f);
+            glutSolidCone(2.0, 6.0, 10, 10); // Wide cone down to ground
+            glPopMatrix();
+            
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
+        glPopMatrix();
+        glPopMatrix();
+
+
+        // Right Side
+        glPushMatrix();
+        glTranslatef(roadWidth/2 + 2.0f, 0.0f, z + 15.0f);
+        
+        // Pole
+        glColor3f(0.3f, 0.3f, 0.3f);
+        glPushMatrix();
+        glRotatef(-90, 1, 0, 0);
+        qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.3, 0.3, 6.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Arm
+        glPushMatrix();
+        glTranslatef(0.0f, 6.0f, 0.0f);
+        glRotatef(-90, 0, 1, 0); // Point towards road (negative)
+        qobj = gluNewQuadric();
+        gluCylinder(qobj, 0.2, 0.2, 3.0, 10, 10);
+        gluDeleteQuadric(qobj);
+        glPopMatrix();
+
+        // Lamp
+        glPushMatrix();
+        glTranslatef(-3.0f, 5.8f, 0.0f);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glutSolidSphere(0.4, 10, 10);
+
+        // Light Beam (Night only)
+        if (isNight) {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+            glColor4f(1.0f, 1.0f, 0.8f, 0.15f);
+            
+            glPushMatrix();
+            glRotatef(90, 1, 0, 0);
+            glTranslatef(0.0f, 0.0f, 6.0f); 
+            glScalef(1.0f, 1.0f, -1.0f);
+            glutSolidCone(2.0, 6.0, 10, 10);
+            glPopMatrix();
+            
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+        }
+        glPopMatrix();
+        glPopMatrix();
+    }
 }
