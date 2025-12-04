@@ -217,6 +217,49 @@ bool Level1::checkCollisions(Car& car) {
         }
     }
 
+    // Check Lamp Posts
+    // Lamp posts are at +/- (roadWidth/2 + 2.0f) = +/- 12.0f
+    // Spaced every 30.0f, offset by 15.0f
+    // Formula: z = k * 30 + 15
+    // We can check if car is near the sides first
+    if (std::abs(carX) > roadWidth/2 + 1.0f) { // Near sides
+        // Check Z alignment with posts
+        // Normalize Z to find nearest post
+        // z - 15 = k * 30
+        // (z - 15) / 30 = k
+        float localZ = carZ - 15.0f;
+        float nearestK = round(localZ / 30.0f);
+        float nearestPostZ = nearestK * 30.0f + 15.0f;
+        
+        if (std::abs(carZ - nearestPostZ) < 1.0f) { // Close to post Z
+            return true; // Collision with lamp post
+        }
+    }
+
+    // Check Buildings
+    // Buildings are at +/- (roadWidth/2 + 10) = +/- 20.0f
+    // Width (X) is 10.0f, so they span [15, 25] and [-25, -15].
+    // Length (Z) is 20.0f. Spaced every 30.0f.
+    // Centered at k * 30. Spans [k*30 - 10, k*30 + 10].
+    
+    // Check X first (simple bounding box)
+    // Car width is approx 2.0f.
+    // If carX > 15 - 1 = 14 (Right side) or carX < -14 (Left side)
+    if (std::abs(carX) > 14.0f) {
+        // Check Z
+        // Normalize Z to nearest building center
+        // Building centers are at multiples of 30.
+        float localZ = carZ;
+        float nearestK = round(localZ / 30.0f);
+        float nearestBuildingZ = nearestK * 30.0f;
+        
+        // Check if within length of building (20 total, so +/- 10)
+        // Add car length (approx 4.0f, so +/- 2.0f)
+        if (std::abs(carZ - nearestBuildingZ) < 10.0f + 2.0f) {
+            return true; // Collision with building
+        }
+    }
+
     return false;
 }
 

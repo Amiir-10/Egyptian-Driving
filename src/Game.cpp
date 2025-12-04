@@ -43,13 +43,13 @@ void Game::update() {
         currentLevel->update();
         
         if (currentLevel->checkCollisions(playerCar)) {
-            playerCar.reset(0, 0); // Reset on collision
+            currentState = GAME_OVER;
         }
         
         if (currentLevel->isFinished(playerCar)) {
             delete currentLevel;
             currentLevel = nullptr;
-            currentState = LEVEL2;
+            currentState = LEVEL1_WIN;
         }
 
         // Day/Night cycle
@@ -67,11 +67,11 @@ void Game::update() {
         currentLevel->update();
 
         if (currentLevel->checkCollisions(playerCar)) {
-            if (currentLevel->isFinished(playerCar)) {
-                currentState = WIN; // Parked!
-            } else {
-                playerCar.reset(0, 0); // Hit obstacle
-            }
+            currentState = GAME_OVER;
+        }
+        
+        if (currentLevel->isFinished(playerCar)) {
+            currentState = WIN; // Parked!
         }
     }
     glutPostRedisplay();
@@ -147,6 +147,12 @@ void Game::render() {
 
     if (currentState == MENU) {
         drawMenu();
+    } else if (currentState == GAME_OVER) {
+        drawGameOver();
+    } else if (currentState == LEVEL1_WIN) {
+        drawLevel1Win();
+    } else if (currentState == WIN) {
+        drawWin();
     } else {
         setCamera();
         setupLights();
@@ -189,8 +195,21 @@ void Game::handleInput(unsigned char key, int x, int y) {
     
     if (currentState == MENU) {
         if (key == 13) currentState = LEVEL1; // Enter
+    } else if (currentState == GAME_OVER) {
+        if (key == 13) {
+            currentState = LEVEL1;
+            if (currentLevel) delete currentLevel;
+            currentLevel = nullptr; // Will be recreated in update
+        }
+    } else if (currentState == LEVEL1_WIN) {
+        if (key == 13) currentState = LEVEL2; // Enter
     } else {
         if (key == 'l' || key == 'L') playerCar.toggleLights();
+        
+        // Developer Cheat Code: Skip Level 1
+        if ((key == 'o' || key == 'O') && currentState == LEVEL1) {
+            playerCar.setZ(900.0f);
+        }
     }
 }
 
@@ -249,6 +268,24 @@ void Game::drawMenu() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     drawText(300, 400, "EGYPTIAN DRIVING GAME");
     drawText(280, 300, "Press ENTER to Start Level 1");
+}
+
+void Game::drawGameOver() {
+    glClearColor(0.2f, 0.0f, 0.0f, 1.0f); // Dark Red
+    drawText(300, 400, "You Crashed! Game Lost!");
+    drawText(280, 300, "Press ENTER to Restart");
+}
+
+void Game::drawLevel1Win() {
+    glClearColor(0.0f, 0.2f, 0.0f, 1.0f); // Dark Green
+    drawText(300, 400, "Level 1 Complete!");
+    drawText(280, 300, "Press ENTER to Continue to Level 2");
+}
+
+void Game::drawWin() {
+    glClearColor(0.0f, 0.3f, 0.0f, 1.0f); // Green
+    drawText(300, 400, "You Won!");
+    drawText(250, 300, "You are now qualified to drive in Egypt!");
 }
 
 void Game::drawHUD() {
