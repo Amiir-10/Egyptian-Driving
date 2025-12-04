@@ -22,6 +22,8 @@ private:
     std::vector<Obstacle> obstacles; // Cones, cars, Sayes
     ParkingSpot targetSpot;
     bool parked;
+    float parkingTimer;
+    bool isParking;
     
     void drawParkingLot();
     void drawCones();
