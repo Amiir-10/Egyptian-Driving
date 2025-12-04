@@ -10,6 +10,11 @@ struct Obstacle {
     float width, length;
     float speed;
     bool active;
+    
+    // Smart behavior
+    float targetX;
+    bool isMovingAside;
+    float originalX;
 };
 
 class Level {
