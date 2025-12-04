@@ -4,9 +4,6 @@
 #include "Level.h"
 #include <vector>
 
-#include "Level.h"
-#include <vector>
-
 struct Collectible {
     float x, z;
     int type; // 0 = Traffic Light (Clear), 1 = Boost
@@ -28,6 +25,7 @@ private:
     std::vector<Collectible> powerups;
     float roadLength;
     float roadWidth;
+    bool wasLightsOn;
     
     void spawnCar();
     void drawRoad(float playerZ);

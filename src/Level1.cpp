@@ -6,6 +6,7 @@
 Level1::Level1() {
     roadLength = 200.0f;
     roadWidth = 20.0f;
+    wasLightsOn = false;
 }
 
 void Level1::init() {
@@ -40,6 +41,11 @@ void Level1::spawnCar() {
     car.length = 4.0f;
     car.speed = 0.05f + ((rand() % 5) / 100.0f); // Slower speed (0.05 - 0.1)
     car.active = false; // Inactive until placed
+    
+    car.targetX = 0;
+    car.isMovingAside = false;
+    car.originalX = 0;
+    
     cars.push_back(car);
 }
 
@@ -166,26 +172,74 @@ bool Level1::checkCollisions(Car& car) {
     // Ideally we should update the Level::update signature.
     
     // Spawn new cars ahead
+    // Spawn new cars ahead
     for (auto& obs : cars) {
         if (!obs.active) {
             if (rand() % 100 < 2) { // Chance to spawn
-                obs.active = true;
-                obs.x = (rand() % (int)roadWidth) - (roadWidth / 2);
-                obs.z = carZ + 100 + (rand() % 50);
-                obs.speed = 0.05f + ((rand() % 5) / 100.0f);
+                // Spawn strictly on road (width 20, so -10 to 10). Keep away from edges.
+                // Range: -8 to 8
+                float newX = (rand() % 16) - 8.0f; 
+                float newZ = carZ + 100 + (rand() % 50);
+                
+                // Check overlap with existing active cars
+                bool overlap = false;
+                for (const auto& other : cars) {
+                    if (other.active) {
+                        if (std::abs(newX - other.x) < 4.0f && std::abs(newZ - other.z) < 10.0f) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!overlap) {
+                    obs.active = true;
+                    obs.x = newX;
+                    obs.z = newZ;
+                    obs.speed = 0.05f + ((rand() % 5) / 100.0f);
+                    
+                    obs.originalX = obs.x;
+                    obs.targetX = obs.x;
+                    obs.isMovingAside = false;
+                }
             }
         } else {
             // Move car
-            obs.z += obs.speed; // Move forward (or backward relative to player?)
-            // If traffic is moving same direction:
-            // obs.z += obs.speed;
+            obs.z += obs.speed; 
             
-            // Despawn if too far behind
-            if (obs.z < carZ - 20) {
+            // Smart Behavior: Move aside if illuminated (Flash Trigger)
+            bool lightsOn = car.isLightsOn();
+            bool justFlashed = lightsOn && !wasLightsOn;
+            
+            if (justFlashed) {
+                // Check if in front and within REDUCED range
+                float distZ = obs.z - carZ;
+                if (distZ > 0 && distZ < 15.0f) { // Reduced range
+                    // Check if in same lane (roughly)
+                    if (std::abs(obs.x - carX) < 4.0f) {
+                        obs.isMovingAside = true;
+                        // Decide direction: Move away from center or just to shoulder
+                        if (obs.x > 0) obs.targetX = obs.x + 6.0f;
+                        else obs.targetX = obs.x - 6.0f;
+                    }
+                }
+            }
+            
+            // Interpolate position (SLOWER)
+            if (obs.isMovingAside) {
+                obs.x += (obs.targetX - obs.x) * 0.01f; // Reduced from 0.05 to 0.01
+            }
+            
+            // Despawn if too far behind OR if on grass
+            // Road width is 20 (-10 to 10). If |x| > 10, it's on grass.
+            if (obs.z < carZ - 20 || std::abs(obs.x) > 10.0f) {
                 obs.active = false;
             }
         }
     }
+    
+    // Update light state for next frame
+    wasLightsOn = car.isLightsOn();
 
     // Check obstacles
     for (auto& obs : cars) {
@@ -262,8 +316,6 @@ bool Level1::checkCollisions(Car& car) {
 
     return false;
 }
-
-
 
 bool Level1::isFinished(Car& car) {
     return car.getZ() > 1000.0f;
