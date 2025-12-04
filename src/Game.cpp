@@ -98,22 +98,40 @@ void Game::setCamera() {
 }
 
 void Game::setupLights() {
-    // Simple day/night cycle logic
-    float ambient = 0.2f;
-    float diffuse = 0.8f;
+    // Smooth Day/Night Cycle
+    // brightness: 0.0 (Midnight) to 1.0 (Noon)
+    // dayTime goes 0..1. 0.5 is Noon.
+    // cos(0) = 1, cos(pi) = -1.
+    // We want max brightness at 0.5 (Noon).
+    // cos(0.5 * 2 * pi) = cos(pi) = -1. Wait.
+    // Let's use -cos.
+    // -cos(0) = -1 (Night). -cos(pi) = 1 (Noon).
+    // range -1 to 1.
+    // brightness = ( -cos(dayTime * 2 * M_PI) + 1.0 ) / 2.0;
     
-    if (dayTime > 0.75f || dayTime < 0.25f) { // Night
-        ambient = 0.1f;
-        diffuse = 0.2f;
-        glClearColor(0.0f, 0.0f, 0.1f, 1.0f); // Dark blue sky
-    } else { // Day
-        glClearColor(0.5f, 0.8f, 1.0f, 1.0f); // Light blue sky
-    }
+    float brightness = (-cos(dayTime * 2 * M_PI) + 1.0f) / 2.0f;
+
+    // Interpolate Sky Color
+    // Night: 0.0, 0.0, 0.1
+    // Day: 0.5, 0.8, 1.0
+    float skyR = 0.0f * (1.0f - brightness) + 0.5f * brightness;
+    float skyG = 0.0f * (1.0f - brightness) + 0.8f * brightness;
+    float skyB = 0.1f * (1.0f - brightness) + 1.0f * brightness;
+    
+    glClearColor(skyR, skyG, skyB, 1.0f);
+
+    // Interpolate Light Intensity
+    float ambient = 0.1f * (1.0f - brightness) + 0.3f * brightness;
+    float diffuse = 0.2f * (1.0f - brightness) + 0.8f * brightness;
 
     GLfloat lightPos[] = { 0.0f, 10.0f, 0.0f, 1.0f };
     // Rotate sun based on time
+    // 0.0 = Midnight (Down), 0.5 = Noon (Up)
+    // sin(0) = 0, cos(0) = 1.
+    // We want Y to be -100 at 0.0, 100 at 0.5.
+    // -cos(0) = -1. -cos(pi) = 1.
     lightPos[0] = sin(dayTime * 2 * M_PI) * 100.0f;
-    lightPos[1] = cos(dayTime * 2 * M_PI) * 100.0f;
+    lightPos[1] = -cos(dayTime * 2 * M_PI) * 100.0f;
 
     GLfloat lightAmb[] = { ambient, ambient, ambient, 1.0f };
     GLfloat lightDif[] = { diffuse, diffuse, diffuse, 1.0f };
@@ -154,7 +172,9 @@ void Game::render() {
         glEnd();
 
         if (currentLevel) {
-            bool isNight = (dayTime > 0.75f || dayTime < 0.25f);
+            // Calculate brightness again for logic (or store it)
+            float brightness = (-cos(dayTime * 2 * M_PI) + 1.0f) / 2.0f;
+            bool isNight = (brightness < 0.3f); // Turn on lights when it gets dark enough
             currentLevel->render(playerCar, isNight);
         }
         playerCar.draw();
