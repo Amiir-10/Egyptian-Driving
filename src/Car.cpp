@@ -20,6 +20,10 @@ void Car::reset(float startX, float startZ) {
     isTurningLeft = false;
     isTurningRight = false;
     lightsOn = true;
+    speedBoostActive = false;
+    boostTimer = 0.0f;
+    trafficClearActive = false;
+    trafficClearTimer = 0.0f;
 }
 
 void Car::accelerate(bool on) { isAccelerating = on; }
@@ -29,11 +33,35 @@ void Car::turnRight(bool on) { isTurningRight = on; }
 void Car::toggleLights() { lightsOn = !lightsOn; }
 
 void Car::update() {
+    // Update powerup timers
+    if (speedBoostActive) {
+        boostTimer -= 0.016f; // ~60 FPS
+        if (boostTimer <= 0) {
+            speedBoostActive = false;
+        }
+    }
+    
+    if (trafficClearActive) {
+        trafficClearTimer -= 0.016f;
+        if (trafficClearTimer <= 0) {
+            trafficClearActive = false;
+        }
+    }
+
     // Speed control
+    float currentAccel = ACCELERATION;
+    float currentMaxSpeed = MAX_SPEED;
+    
+    // Apply speed boost
+    if (speedBoostActive) {
+        currentAccel = ACCELERATION * 2.0f;
+        currentMaxSpeed = MAX_SPEED * 1.5f;
+    }
+    
     if (isAccelerating) {
-        speed += ACCELERATION;
+        speed += currentAccel;
     } else if (isBraking) {
-        speed -= ACCELERATION;
+        speed -= currentAccel;
     } else {
         // Friction
         if (speed > 0) speed -= FRICTION;
@@ -42,8 +70,8 @@ void Car::update() {
     }
 
     // Cap speed
-    if (speed > MAX_SPEED) speed = MAX_SPEED;
-    if (speed < -MAX_SPEED / 2) speed = -MAX_SPEED / 2;
+    if (speed > currentMaxSpeed) speed = currentMaxSpeed;
+    if (speed < -currentMaxSpeed / 2) speed = -currentMaxSpeed / 2;
 
     // Turning (Allow turning even if slow, but maybe less?)
     // User said "I have no way to steer". Maybe they were stopped?
@@ -200,6 +228,16 @@ void Car::drawBody() {
     glScalef(0.7f, 0.3f, 1.0f);
     glutSolidCube(1.0f);
     glPopMatrix();
+}
+
+void Car::applySpeedBoost() {
+    speedBoostActive = true;
+    boostTimer = 5.0f; // 5 seconds boost
+}
+
+void Car::clearTraffic() {
+    trafficClearActive = true;
+    trafficClearTimer = 8.0f; // 8 seconds clear traffic
 }
 
 void Car::drawWheels() {
