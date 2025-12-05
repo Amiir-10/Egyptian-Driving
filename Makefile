@@ -20,7 +20,6 @@ ifeq ($(OS),Windows_NT)
     MKDIR = if not exist $(subst /,\,$(1)) mkdir $(subst /,\,$(1))
     RMDIR = if exist $(subst /,\,$(1)) rmdir /S /Q $(subst /,\,$(1))
     COPY = copy /Y $(subst /,\,$(1)) $(subst /,\,$(2))
-    LIB_DIR = lib/x64
 else
     RM = rm -f
     MKDIR = mkdir -p $(1)
@@ -46,7 +45,7 @@ directories:
 $(BIN_DIR)/$(TARGET): $(OBJECTS)
 	@echo Linking $(TARGET)...
 	@$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
-	@if not exist $(BIN_DIR)\freeglut.dll $(call COPY,bin\x64\freeglut.dll,$(BIN_DIR)\freeglut.dll)
+	@if not exist $(BIN_DIR)\freeglut.dll $(call COPY,bin\freeglut.dll,$(BIN_DIR)\freeglut.dll)
 	@echo Build complete: $(BIN_DIR)/$(TARGET)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
