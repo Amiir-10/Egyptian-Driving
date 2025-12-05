@@ -2,6 +2,7 @@
 #define LEVEL1_H
 
 #include "Level.h"
+#include "OBJLoader.h"
 #include <vector>
 
 struct Collectible {
@@ -27,6 +28,10 @@ private:
     float roadLength;
     float roadWidth;
     bool wasLightsOn;
+    OBJModel carModel;
+    OBJModel wheelModel;
+    bool modelLoaded;
+    bool wheelLoaded;
     
     void spawnCar();
     void drawRoad(float playerZ);

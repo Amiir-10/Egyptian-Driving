@@ -2,16 +2,43 @@
 #include <GL/glut.h>
 #include <cstdlib>
 #include <cmath>
+#include <iostream>
 
 Level1::Level1() {
     roadLength = 200.0f;
     roadWidth = 20.0f;
     wasLightsOn = false;
+    modelLoaded = false;
+    wheelLoaded = false;
 }
 
 void Level1::init() {
     cars.clear();
     powerups.clear();
+    
+    // Clear models before reloading to prevent memory issues on restart
+    carModel.clear();
+    wheelModel.clear();
+    modelLoaded = false;
+    wheelLoaded = false;
+    
+    // Load muscle car model (path relative to bin folder where exe runs)
+    modelLoaded = carModel.load("../src/models/muscle-car.obj");
+    if (!modelLoaded) {
+        std::cerr << "Warning: Failed to load muscle car model from ../src/models/muscle-car.obj" << std::endl;
+        std::cerr << "Falling back to simple cube rendering" << std::endl;
+    } else {
+        std::cerr << "Successfully loaded muscle car model" << std::endl;
+    }
+    
+    // Load wheel model
+    std::cerr << "Attempting to load wheel model..." << std::endl;
+    wheelLoaded = wheelModel.load("../src/models/Wheel.obj");
+    if (!wheelLoaded) {
+        std::cerr << "Warning: Failed to load wheel model from ../src/models/Wheel.obj" << std::endl;
+    } else {
+        std::cerr << "Successfully loaded wheel model with " << wheelModel.getObjectCount() << " objects" << std::endl;
+    }
     
     // Spawn some initial cars
     for (int i = 0; i < 10; i++) {
@@ -129,16 +156,78 @@ void Level1::drawBuildings(float playerZ) {
 }
 
 void Level1::drawObstacles() {
-    for (const auto& car : cars) {
+    for (size_t i = 0; i < cars.size(); i++) {
+        const auto& car = cars[i];
         if (!car.active) continue;
         
         glPushMatrix();
-        glTranslatef(car.x, 1.0f, car.z);
+        glTranslatef(car.x, 0.0f, car.z);
         
-        // Car Body
-        glColor3f(0.0f, 0.0f, 0.8f); // Blue cars
-        glScalef(car.width, 1.5f, car.length);
-        glutSolidCube(1.0f);
+        // Scale the model
+        float scale = 1.2f;
+        glScalef(scale, scale, scale);
+        
+        // Rotate to face forward (0 degrees - no rotation)
+        // Removed 180 degree rotation to fix reversed orientation
+        
+        // Set color based on car index (7 color variants)
+        switch(i % 7) {
+            case 0: glColor3f(0.0f, 0.0f, 0.8f); break; // Blue
+            case 1: glColor3f(1.0f, 0.8f, 0.0f); break; // Yellow
+            case 2: glColor3f(0.2f, 0.2f, 0.2f); break; // Dark Gray
+            case 3: glColor3f(0.8f, 0.2f, 0.2f); break; // Red
+            case 4: glColor3f(0.5f, 0.5f, 0.5f); break; // Gray
+            case 5: glColor3f(0.9f, 0.9f, 0.9f); break; // White
+            case 6: glColor3f(0.1f, 0.1f, 0.1f); break; // Black
+            default: glColor3f(0.5f, 0.5f, 0.5f); break;
+        }
+        
+        // Draw model or fallback cube
+        if (modelLoaded) {
+            carModel.draw(-1);
+            
+            // Draw wheels if loaded
+            if (wheelLoaded) {
+                // Wheel scale (adjust based on car scale)
+                float wheelScale = 0.35f;
+                
+                // Wheel positions (approximate for muscle car)
+                // Front left
+                glPushMatrix();
+                glTranslatef(-1.2f, -0.3f, 2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(90, 0, 1, 0); // Rotate wheel to face forward
+                wheelModel.draw(-1);
+                glPopMatrix();
+                
+                // Front right
+                glPushMatrix();
+                glTranslatef(1.2f, -0.3f, 2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(-90, 0, 1, 0); // Rotate wheel to face forward
+                wheelModel.draw(-1);
+                glPopMatrix();
+                
+                // Rear left
+                glPushMatrix();
+                glTranslatef(-1.2f, -0.3f, -2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(90, 0, 1, 0);
+                wheelModel.draw(-1);
+                glPopMatrix();
+                
+                // Rear right
+                glPushMatrix();
+                glTranslatef(1.2f, -0.3f, -2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(-90, 0, 1, 0);
+                wheelModel.draw(-1);
+                glPopMatrix();
+            }
+        } else {
+            glScalef(car.width / scale, 1.5f / scale, car.length / scale);
+            glutSolidCube(1.0f);
+        }
         
         glPopMatrix();
     }
