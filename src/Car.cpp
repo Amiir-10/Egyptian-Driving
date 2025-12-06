@@ -16,10 +16,9 @@ void Car::reset(float startX, float startZ) {
     speed = 0.0f;
     tiltAngle = 0.0f;
     isAccelerating = false;
-    isBraking = false;
-    isTurningLeft = false;
     isTurningRight = false;
     lightsOn = true;
+    boostMultiplier = 1.0f;
 }
 
 void Car::accelerate(bool on) { isAccelerating = on; }
@@ -27,13 +26,19 @@ void Car::brake(bool on) { isBraking = on; }
 void Car::turnLeft(bool on) { isTurningLeft = on; }
 void Car::turnRight(bool on) { isTurningRight = on; }
 void Car::toggleLights() { lightsOn = !lightsOn; }
+void Car::setBoost(bool on) { 
+    boostMultiplier = on ? 2.0f : 1.0f; 
+}
 
 void Car::update() {
     // Speed control
+    float effectiveAccel = ACCELERATION * boostMultiplier;
+    float effectiveMax = MAX_SPEED * boostMultiplier;
+
     if (isAccelerating) {
-        speed += ACCELERATION;
+        speed += effectiveAccel;
     } else if (isBraking) {
-        speed -= ACCELERATION;
+        speed -= effectiveAccel;
     } else {
         // Friction
         if (speed > 0) speed -= FRICTION;
@@ -42,8 +47,8 @@ void Car::update() {
     }
 
     // Cap speed
-    if (speed > MAX_SPEED) speed = MAX_SPEED;
-    if (speed < -MAX_SPEED / 2) speed = -MAX_SPEED / 2;
+    if (speed > effectiveMax) speed = effectiveMax;
+    if (speed < -effectiveMax / 2) speed = -effectiveMax / 2;
 
     // Turning (Allow turning even if slow, but maybe less?)
     // User said "I have no way to steer". Maybe they were stopped?

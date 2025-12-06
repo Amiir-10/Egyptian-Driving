@@ -27,6 +27,12 @@ private:
     float roadWidth;
     bool wasLightsOn;
     
+    float noTrafficTimer;
+    bool noTrafficActive;
+
+    float speedBoostTimer;
+    bool speedBoostActive;
+
     void spawnCar();
     void drawRoad(float playerZ);
     void drawGround(float playerZ);

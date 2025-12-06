@@ -2,16 +2,26 @@
 #include <GL/glut.h>
 #include <cstdlib>
 #include <cmath>
+#include <cstdio>
 
 Level1::Level1() {
     roadLength = 200.0f;
     roadWidth = 20.0f;
     wasLightsOn = false;
+    noTrafficTimer = 0.0f;
+    noTrafficActive = false;
+    speedBoostTimer = 0.0f;
+    speedBoostActive = false;
 }
 
 void Level1::init() {
     cars.clear();
     powerups.clear();
+    
+    noTrafficTimer = 0.0f;
+    noTrafficActive = false;
+    speedBoostTimer = 0.0f;
+    speedBoostActive = false;
     
     // Spawn some initial cars
     for (int i = 0; i < 10; i++) {
@@ -21,7 +31,7 @@ void Level1::init() {
     // Spawn powerups
     for (int i = 0; i < 5; i++) {
         Collectible c;
-        c.x = (rand() % (int)roadWidth) - (roadWidth / 2);
+        c.x = ((rand() % 16) - 8.0f); // Strictly on road (-8 to 8)
         c.z = (rand() % (int)roadLength) + 20;
         c.type = rand() % 2;
         c.active = true;
@@ -73,9 +83,70 @@ void Level1::render(Car& car, bool isNight) {
     // Update/Spawn Obstacles based on playerZ (Hack: doing logic in render or separate update)
     // Ideally logic should be in update.
     // Let's fix the update signature first.
+    drawLampPosts(playerZ, isNight);
+    
+    // Update/Spawn Obstacles based on playerZ (Hack: doing logic in render or separate update)
+    // Ideally logic should be in update.
+    // Let's fix the update signature first.
     
     drawObstacles();
     drawCollectibles();
+
+    // Draw No Traffic Timer
+    if (noTrafficActive) {
+        glDisable(GL_LIGHTING);
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0, 800, 0, 600);
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+        
+        glColor3f(1.0f, 1.0f, 0.0f); // Yellow
+        // Format time to 1 decimal place
+        char timeBuffer[32];
+        sprintf(timeBuffer, "No Traffic: %.1fs", noTrafficTimer);
+        // std::string timeStr = "No Traffic: " + std::to_string(noTrafficTimer).substr(0, 3) + "s";
+        
+        glRasterPos2f(300, 550); // Top center-ish
+        for (char* c = timeBuffer; *c != '\0'; c++) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+        }
+    
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glEnable(GL_LIGHTING);
+    }
+    
+    // Draw Speed Boost Timer
+    if (speedBoostActive) {
+        glDisable(GL_LIGHTING);
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0, 800, 0, 600);
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+        
+        glColor3f(0.0f, 1.0f, 1.0f); // Cyan
+        char timeBuffer[32];
+        sprintf(timeBuffer, "Speed Boost: %.1fs", speedBoostTimer);
+        
+        glRasterPos2f(300, 520); // Slightly below No Traffic
+        for (char* c = timeBuffer; *c != '\0'; c++) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+        }
+    
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glEnable(GL_LIGHTING);
+    }
 }
 
 void Level1::drawRoad(float playerZ) {
@@ -167,73 +238,94 @@ bool Level1::checkCollisions(Car& car) {
     float carZ = car.getZ();
     float carSize = 1.0f; // Approx radius
 
+    // Handle No Traffic Timer
+    if (noTrafficActive) {
+        noTrafficTimer -= 0.016f; // Approx 60 FPS
+        if (noTrafficTimer <= 0.0f) {
+            noTrafficActive = false;
+        } else {
+            // Despawn all cars while active
+            for (auto& obs : cars) {
+                obs.active = false;
+            }
+        }
+    }
+
+    // Handle Speed Boost Timer
+    if (speedBoostActive) {
+        speedBoostTimer -= 0.016f;
+        if (speedBoostTimer <= 0.0f) {
+            speedBoostActive = false;
+            car.setBoost(false);
+        }
+    }
+
     // Manage Obstacles (Spawn/Despawn)
-    // This is a hack to do it in collision check, but we have access to 'car' here!
-    // Ideally we should update the Level::update signature.
-    
-    // Spawn new cars ahead
-    // Spawn new cars ahead
-    for (auto& obs : cars) {
-        if (!obs.active) {
-            if (rand() % 100 < 2) { // Chance to spawn
-                // Spawn strictly on road (width 20, so -10 to 10). Keep away from edges.
-                // Range: -8 to 8
-                float newX = (rand() % 16) - 8.0f; 
-                float newZ = carZ + 100 + (rand() % 50);
+    // Only spawn if traffic is allowed
+    if (!noTrafficActive) {
+        // Spawn new cars ahead
+        for (auto& obs : cars) {
+            if (!obs.active) {
+                if (rand() % 100 < 2) { // Chance to spawn
+                    // Spawn strictly on road (width 20, so -10 to 10). Keep away from edges.
+                    // Range: -8 to 8
+                    float newX = (rand() % 16) - 8.0f; 
+                    float newZ = carZ + 100 + (rand() % 50);
+                    
+                    // Check overlap with existing active cars
+                    bool overlap = false;
+                    for (const auto& other : cars) {
+                        if (other.active) {
+                            if (std::abs(newX - other.x) < 4.0f && std::abs(newZ - other.z) < 10.0f) {
+                                overlap = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!overlap) {
+                        obs.active = true;
+                        obs.x = newX;
+                        obs.z = newZ;
+                        obs.speed = 0.05f + ((rand() % 5) / 100.0f);
+                        
+                        obs.originalX = obs.x;
+                        obs.targetX = obs.x;
+                        obs.isMovingAside = false;
+                    }
+                }
+            } else {
+                // Move car
+                obs.z += obs.speed; 
                 
-                // Check overlap with existing active cars
-                bool overlap = false;
-                for (const auto& other : cars) {
-                    if (other.active) {
-                        if (std::abs(newX - other.x) < 4.0f && std::abs(newZ - other.z) < 10.0f) {
-                            overlap = true;
-                            break;
+                // Smart Behavior: Move aside if illuminated (Flash Trigger)
+                bool lightsOn = car.isLightsOn();
+                bool justFlashed = lightsOn && !wasLightsOn;
+                
+                if (justFlashed) {
+                    // Check if in front and within REDUCED range
+                    float distZ = obs.z - carZ;
+                    if (distZ > 0 && distZ < 15.0f) { // Reduced range
+                        // Check if in same lane (roughly)
+                        if (std::abs(obs.x - carX) < 4.0f) {
+                            obs.isMovingAside = true;
+                            // Decide direction: Move away from center or just to shoulder
+                            if (obs.x > 0) obs.targetX = obs.x + 6.0f;
+                            else obs.targetX = obs.x - 6.0f;
                         }
                     }
                 }
                 
-                if (!overlap) {
-                    obs.active = true;
-                    obs.x = newX;
-                    obs.z = newZ;
-                    obs.speed = 0.05f + ((rand() % 5) / 100.0f);
-                    
-                    obs.originalX = obs.x;
-                    obs.targetX = obs.x;
-                    obs.isMovingAside = false;
+                // Interpolate position (SLOWER)
+                if (obs.isMovingAside) {
+                    obs.x += (obs.targetX - obs.x) * 0.01f; // Reduced from 0.05 to 0.01
                 }
-            }
-        } else {
-            // Move car
-            obs.z += obs.speed; 
-            
-            // Smart Behavior: Move aside if illuminated (Flash Trigger)
-            bool lightsOn = car.isLightsOn();
-            bool justFlashed = lightsOn && !wasLightsOn;
-            
-            if (justFlashed) {
-                // Check if in front and within REDUCED range
-                float distZ = obs.z - carZ;
-                if (distZ > 0 && distZ < 15.0f) { // Reduced range
-                    // Check if in same lane (roughly)
-                    if (std::abs(obs.x - carX) < 4.0f) {
-                        obs.isMovingAside = true;
-                        // Decide direction: Move away from center or just to shoulder
-                        if (obs.x > 0) obs.targetX = obs.x + 6.0f;
-                        else obs.targetX = obs.x - 6.0f;
-                    }
+                
+                // Despawn if too far behind OR if on grass
+                // Road width is 20 (-10 to 10). If |x| > 10, it's on grass.
+                if (obs.z < carZ - 20 || std::abs(obs.x) > 10.0f) {
+                    obs.active = false;
                 }
-            }
-            
-            // Interpolate position (SLOWER)
-            if (obs.isMovingAside) {
-                obs.x += (obs.targetX - obs.x) * 0.01f; // Reduced from 0.05 to 0.01
-            }
-            
-            // Despawn if too far behind OR if on grass
-            // Road width is 20 (-10 to 10). If |x| > 10, it's on grass.
-            if (obs.z < carZ - 20 || std::abs(obs.x) > 10.0f) {
-                obs.active = false;
             }
         }
     }
@@ -253,11 +345,27 @@ bool Level1::checkCollisions(Car& car) {
 
     // Check collectibles
     for (auto& p : powerups) {
-        // Respawn logic for powerups
-        if (!p.active && rand() % 200 < 1) {
-            p.active = true;
-            p.x = (rand() % (int)roadWidth) - (roadWidth / 2);
-            p.z = carZ + 150 + (rand() % 50);
+        // Respawn logic for powerups - Reduced frequency and overlap check
+        if (!p.active && rand() % 500 < 1) { // Reduced frequency (was 200)
+            float newX = (rand() % 16) - 8.0f; // On road
+            float newZ = carZ + 150 + (rand() % 50);
+            
+            // Check overlap with other powerups
+            bool overlap = false;
+            for (const auto& other : powerups) {
+                if (other.active) {
+                     if (std::abs(newX - other.x) < 2.0f && std::abs(newZ - other.z) < 2.0f) {
+                         overlap = true;
+                         break;
+                     }
+                }
+            }
+
+            if (!overlap) {
+                p.active = true;
+                p.x = newX;
+                p.z = newZ;
+            }
         }
         
         if (p.active) {
@@ -265,8 +373,15 @@ bool Level1::checkCollisions(Car& car) {
 
             if (std::abs(carX - p.x) < 1.5f && std::abs(carZ - p.z) < 1.5f) {
                 p.active = false;
-                if (p.type == 1) car.accelerate(true); // Boost hack (doesn't really work with bool)
-                // We need a way to boost speed directly.
+                if (p.type == 0) { // Traffic Light (No Traffic)
+                    noTrafficActive = true;
+                    noTrafficTimer = 5.0f; // 5 seconds
+                }
+                else if (p.type == 1) { // Boost
+                    speedBoostActive = true;
+                    speedBoostTimer = 3.0f;
+                    car.setBoost(true);
+                }
             }
         }
     }

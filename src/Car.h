@@ -17,6 +17,7 @@ public:
     void turnLeft(bool on);
     void turnRight(bool on);
     void toggleLights();
+    void setBoost(bool on); // New method
 
     // Getters
     float getX() const { return x; }
@@ -33,6 +34,7 @@ private:
     float rotation; // Degrees
     float speed;
     float tiltAngle; // For turning effect
+    float boostMultiplier; // New member
     
     // Physics constants
     const float MAX_SPEED = 0.3f; // Slower
