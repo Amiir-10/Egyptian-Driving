@@ -38,9 +38,11 @@ void Level1::init()
         Collectible c;
         c.x = ((rand() % 16) - 8.0f); // Strictly on road (-8 to 8)
         c.z = (rand() % (int)roadLength) + 20;
-        c.type = rand() % 2;
+        // 75% chance for speed boost (type 1), 25% for traffic light (type 0)
+        c.type = (rand() % 100 < 75) ? 1 : 0;
         c.active = true;
         c.rotation = 0;
+        c.animationTime = 0;
         powerups.push_back(c);
     }
 }
@@ -242,8 +244,18 @@ void Level1::drawCollectibles()
         if (!p.active)
             continue;
 
+        // Update animation time
+        p.animationTime += 0.05f;
+        p.rotation += 2.0f; // Rotate for visibility
+        
+        // Calculate bobbing effect (up and down)
+        float bobHeight = sin(p.animationTime) * 0.3f;
+        
+        // Calculate pulsing scale
+        float pulseScale = 1.0f + sin(p.animationTime * 2.0f) * 0.15f;
+
         glPushMatrix();
-        glTranslatef(p.x, 1.0f, p.z);
+        glTranslatef(p.x, 1.5f + bobHeight, p.z); // Higher position with bobbing
         glRotatef(p.rotation, 0, 1, 0);
 
         if (p.type == 0)
@@ -647,4 +659,126 @@ void Level1::drawLampPosts(float playerZ, bool isNight)
         glPopMatrix();
         glPopMatrix();
     }
+}
+
+void Level1::drawTrafficLight(float scale) {
+    glPushMatrix();
+    glScalef(scale, scale, scale);
+    
+    // Pole (black)
+    glColor3f(0.1f, 0.1f, 0.1f);
+    glPushMatrix();
+    glTranslatef(0.0f, -0.5f, 0.0f);
+    glRotatef(-90, 1, 0, 0);
+    GLUquadricObj *qobj = gluNewQuadric();
+    gluCylinder(qobj, 0.1, 0.1, 1.0, 10, 10);
+    gluDeleteQuadric(qobj);
+    glPopMatrix();
+    
+    // Traffic light housing (dark gray)
+    glColor3f(0.2f, 0.2f, 0.2f);
+    glPushMatrix();
+    glScalef(0.4f, 0.9f, 0.3f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    
+    // Red light (top)
+    glPushMatrix();
+    glTranslatef(0.0f, 0.25f, 0.16f);
+    glColor3f(0.5f, 0.0f, 0.0f); // Dim red
+    glutSolidSphere(0.12f, 10, 10);
+    glPopMatrix();
+    
+    // Yellow light (middle) - GLOWING
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.16f);
+    
+    // Outer glow
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glColor4f(1.0f, 1.0f, 0.0f, 0.3f);
+    glutSolidSphere(0.18f, 10, 10);
+    glDisable(GL_BLEND);
+    
+    // Bright core
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glutSolidSphere(0.12f, 10, 10);
+    glPopMatrix();
+    
+    // Green light (bottom)
+    glPushMatrix();
+    glTranslatef(0.0f, -0.25f, 0.16f);
+    glColor3f(0.0f, 0.3f, 0.0f); // Dim green
+    glutSolidSphere(0.12f, 10, 10);
+    glPopMatrix();
+    
+    glPopMatrix();
+}
+
+void Level1::drawSpeedBoost(float scale) {
+    glPushMatrix();
+    glScalef(scale, scale, scale);
+    
+    // Double arrow pointing upwards/forwards
+    
+    // Base platform (glowing cyan)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glColor4f(0.0f, 1.0f, 1.0f, 0.4f);
+    glPushMatrix();
+    glTranslatef(0.0f, -0.3f, 0.0f);
+    glScalef(0.8f, 0.1f, 0.8f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    glDisable(GL_BLEND);
+    
+    // First arrow (bottom)
+    glColor3f(0.0f, 1.0f, 1.0f); // Bright cyan
+    
+    // Arrow shaft
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.0f);
+    glScalef(0.15f, 0.5f, 0.15f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    
+    // Arrow head (pyramid)
+    glPushMatrix();
+    glTranslatef(0.0f, 0.35f, 0.0f);
+    glRotatef(-90, 1, 0, 0);
+    glutSolidCone(0.3f, 0.4f, 4, 1);
+    glPopMatrix();
+    
+    // Second arrow (top) - slightly offset
+    glColor3f(0.5f, 1.0f, 1.0f); // Lighter cyan
+    
+    // Arrow shaft
+    glPushMatrix();
+    glTranslatef(0.0f, 0.5f, 0.0f);
+    glScalef(0.12f, 0.4f, 0.12f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    
+    // Arrow head (pyramid)
+    glPushMatrix();
+    glTranslatef(0.0f, 0.8f, 0.0f);
+    glRotatef(-90, 1, 0, 0);
+    glutSolidCone(0.25f, 0.35f, 4, 1);
+    glPopMatrix();
+    
+    // Add sparkle effect with small rotating cubes
+    glPushMatrix();
+    glRotatef(scale * 100.0f, 0, 1, 0);
+    for (int i = 0; i < 4; i++) {
+        glPushMatrix();
+        glRotatef(i * 90, 0, 1, 0);
+        glTranslatef(0.5f, 0.4f, 0.0f);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glScalef(0.05f, 0.05f, 0.05f);
+        glutSolidCube(1.0f);
+        glPopMatrix();
+    }
+    glPopMatrix();
+    
+    glPopMatrix();
 }
