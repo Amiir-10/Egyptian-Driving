@@ -2,7 +2,6 @@
 #define LEVEL1_H
 
 #include "Level.h"
-#include "OBJLoader.h"
 #include <vector>
 
 struct Collectible {
@@ -10,7 +9,6 @@ struct Collectible {
     int type; // 0 = Traffic Light (Clear), 1 = Boost
     bool active;
     float rotation;
-    float animationTime; // For scaling/bobbing animation
 };
 
 class Level1 : public Level {
@@ -28,11 +26,14 @@ private:
     float roadLength;
     float roadWidth;
     bool wasLightsOn;
-    OBJModel carModel;
-    OBJModel wheelModel;
-    bool modelLoaded;
-    bool wheelLoaded;
     
+    float noTrafficTimer;
+    bool noTrafficActive;
+
+    float speedBoostTimer;
+    bool speedBoostActive;
+    float animationTime; // For scaling animation
+
     void spawnCar();
     void drawRoad(float playerZ);
     void drawGround(float playerZ);
@@ -40,8 +41,6 @@ private:
     void drawLampPosts(float playerZ, bool isNight);
     void drawObstacles();
     void drawCollectibles();
-    void drawTrafficLight(float scale);
-    void drawSpeedBoost(float scale);
 };
 
 #endif
