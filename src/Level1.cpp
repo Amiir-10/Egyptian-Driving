@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstdio>
+#include <iostream>
 
 Level1::Level1()
 {
@@ -14,6 +15,8 @@ Level1::Level1()
     speedBoostTimer = 0.0f;
     speedBoostActive = false;
     animationTime = 0.0f;
+    modelLoaded = false;
+    wheelLoaded = false;
 }
 
 void Level1::init()
@@ -26,6 +29,31 @@ void Level1::init()
     speedBoostTimer = 0.0f;
     speedBoostActive = false;
 
+    
+    // Clear models before reloading to prevent memory issues on restart
+    carModel.clear();
+    wheelModel.clear();
+    modelLoaded = false;
+    wheelLoaded = false;
+    
+    // Load muscle car model (path relative to bin folder where exe runs)
+    modelLoaded = carModel.load("../src/models/muscle-car.obj");
+    if (!modelLoaded) {
+        std::cerr << "Warning: Failed to load muscle car model from ../src/models/muscle-car.obj" << std::endl;
+        std::cerr << "Falling back to simple cube rendering" << std::endl;
+    } else {
+        std::cerr << "Successfully loaded muscle car model" << std::endl;
+    }
+    
+    // Load wheel model
+    std::cerr << "Attempting to load wheel model..." << std::endl;
+    wheelLoaded = wheelModel.load("../src/models/Wheel.obj");
+    if (!wheelLoaded) {
+        std::cerr << "Warning: Failed to load wheel model from ../src/models/Wheel.obj" << std::endl;
+    } else {
+        std::cerr << "Successfully loaded wheel model with " << wheelModel.getObjectCount() << " objects" << std::endl;
+    }
+    
     // Spawn some initial cars
     for (int i = 0; i < 10; i++)
     {
@@ -35,12 +63,15 @@ void Level1::init()
     // Spawn powerups
     for (int i = 0; i < 5; i++)
     {
+    for (int i = 0; i < 3; i++) {
         Collectible c;
         c.x = ((rand() % 16) - 8.0f); // Strictly on road (-8 to 8)
         c.z = (rand() % (int)roadLength) + 20;
-        c.type = rand() % 2;
+        // 75% chance for speed boost (type 1), 25% for traffic light (type 0)
+        c.type = (rand() % 100 < 75) ? 1 : 0;
         c.active = true;
         c.rotation = 0;
+        c.animationTime = 0;
         powerups.push_back(c);
     }
 }
@@ -231,6 +262,80 @@ void Level1::drawObstacles()
         glScalef(car.width, 1.5f, car.length);
         glutSolidCube(1.0f);
 
+void Level1::drawObstacles() {
+    for (size_t i = 0; i < cars.size(); i++) {
+        const auto& car = cars[i];
+        if (!car.active) continue;
+        
+        glPushMatrix();
+        glTranslatef(car.x, 0.0f, car.z);
+        
+        // Scale the model
+        float scale = 1.2f;
+        glScalef(scale, scale, scale);
+        
+        // Rotate to face forward (0 degrees - no rotation)
+        // Removed 180 degree rotation to fix reversed orientation
+        
+        // Set color based on car index (7 color variants)
+        switch(i % 7) {
+            case 0: glColor3f(0.0f, 0.0f, 0.8f); break; // Blue
+            case 1: glColor3f(1.0f, 0.8f, 0.0f); break; // Yellow
+            case 2: glColor3f(0.2f, 0.2f, 0.2f); break; // Dark Gray
+            case 3: glColor3f(0.8f, 0.2f, 0.2f); break; // Red
+            case 4: glColor3f(0.5f, 0.5f, 0.5f); break; // Gray
+            case 5: glColor3f(0.9f, 0.9f, 0.9f); break; // White
+            case 6: glColor3f(0.1f, 0.1f, 0.1f); break; // Black
+            default: glColor3f(0.5f, 0.5f, 0.5f); break;
+        }
+        
+        // Draw model or fallback cube
+        if (modelLoaded) {
+            carModel.draw(-1);
+            
+            // Draw wheels if loaded
+            if (wheelLoaded) {
+                // Wheel scale (adjust based on car scale)
+                float wheelScale = 0.35f;
+                
+                // Wheel positions (approximate for muscle car)
+                // Front left
+                glPushMatrix();
+                glTranslatef(-1.2f, -0.3f, 2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(90, 0, 1, 0); // Rotate wheel to face forward
+                wheelModel.draw(-1);
+                glPopMatrix();
+                
+                // Front right
+                glPushMatrix();
+                glTranslatef(1.2f, -0.3f, 2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(-90, 0, 1, 0); // Rotate wheel to face forward
+                wheelModel.draw(-1);
+                glPopMatrix();
+                
+                // Rear left
+                glPushMatrix();
+                glTranslatef(-1.2f, -0.3f, -2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(90, 0, 1, 0);
+                wheelModel.draw(-1);
+                glPopMatrix();
+                
+                // Rear right
+                glPushMatrix();
+                glTranslatef(1.2f, -0.3f, -2.0f);
+                glScalef(wheelScale, wheelScale, wheelScale);
+                glRotatef(-90, 0, 1, 0);
+                wheelModel.draw(-1);
+                glPopMatrix();
+            }
+        } else {
+            glScalef(car.width / scale, 1.5f / scale, car.length / scale);
+            glutSolidCube(1.0f);
+        }
+        
         glPopMatrix();
     }
 }
@@ -241,9 +346,22 @@ void Level1::drawCollectibles()
     {
         if (!p.active)
             continue;
+void Level1::drawCollectibles() {
+    for (auto& p : powerups) {
+        if (!p.active) continue;
+
+        // Update animation time
+        p.animationTime += 0.05f;
+        p.rotation += 2.0f; // Rotate for visibility
+        
+        // Calculate bobbing effect (up and down)
+        float bobHeight = sin(p.animationTime) * 0.3f;
+        
+        // Calculate pulsing scale
+        float pulseScale = 1.0f + sin(p.animationTime * 2.0f) * 0.15f;
 
         glPushMatrix();
-        glTranslatef(p.x, 1.0f, p.z);
+        glTranslatef(p.x, 1.5f + bobHeight, p.z); // Higher position with bobbing
         glRotatef(p.rotation, 0, 1, 0);
 
         if (p.type == 0)
@@ -261,6 +379,10 @@ void Level1::drawCollectibles()
             float offset = 0.5f * sin(animationTime);
             glTranslatef(0.0f, offset, 0.0f);
             glutSolidCone(0.5f, 1.0f, 10, 2);
+        if (p.type == 0) { // Traffic Light (Clear Traffic)
+            drawTrafficLight(pulseScale);
+        } else { // Speed Boost
+            drawSpeedBoost(pulseScale);
         }
 
         glPopMatrix();
@@ -370,6 +492,37 @@ bool Level1::checkCollisions(Car &car)
                             else
                                 obs.targetX = obs.x - 6.0f;
                         }
+        } else {
+            // Move car
+            obs.z += obs.speed; 
+            
+            // Smart Behavior: Move aside if illuminated (Flash Trigger)
+            bool lightsOn = car.isLightsOn();
+            bool justFlashed = lightsOn && !wasLightsOn;
+            bool trafficClear = car.hasTrafficClear();
+            
+            // Traffic clear powerup effect - all cars move aside
+            if (trafficClear) {
+                float distZ = obs.z - carZ;
+                if (distZ > 0 && distZ < 100.0f) { // Clear all cars ahead
+                    if (!obs.isMovingAside) {
+                        obs.isMovingAside = true;
+                        // Move to shoulder
+                        if (obs.x > 0) obs.targetX = obs.x + 6.0f;
+                        else obs.targetX = obs.x - 6.0f;
+                    }
+                }
+            }
+            else if (justFlashed) {
+                // Check if in front and within REDUCED range
+                float distZ = obs.z - carZ;
+                if (distZ > 0 && distZ < 15.0f) { // Reduced range
+                    // Check if in same lane (roughly)
+                    if (std::abs(obs.x - carX) < 4.0f) {
+                        obs.isMovingAside = true;
+                        // Decide direction: Move away from center or just to shoulder
+                        if (obs.x > 0) obs.targetX = obs.x + 6.0f;
+                        else obs.targetX = obs.x - 6.0f;
                     }
                 }
 
@@ -435,6 +588,15 @@ bool Level1::checkCollisions(Car &car)
                 p.z = newZ;
                 p.type = rand() % 2; // Randomly assign type on respawn (0 = No Traffic, 1 = Speed Boost)
             }
+    for (auto& p : powerups) {
+        // Respawn logic for powerups
+        if (!p.active && rand() % 400 < 1) {
+            p.active = true;
+            p.x = (rand() % (int)roadWidth) - (roadWidth / 2);
+            p.z = carZ + 150 + (rand() % 50);
+            p.animationTime = 0;
+            // 75% chance for speed boost (type 1), 25% for traffic light (type 0)
+            p.type = (rand() % 100 < 75) ? 1 : 0;
         }
 
         if (p.active)
@@ -455,6 +617,14 @@ bool Level1::checkCollisions(Car &car)
                     speedBoostActive = true;
                     speedBoostTimer = 3.0f;
                     car.setBoost(true);
+                
+                // Apply powerup effects
+                if (p.type == 0) {
+                    // Traffic Light - Clear traffic ahead
+                    car.clearTraffic();
+                } else if (p.type == 1) {
+                    // Speed Boost
+                    car.applySpeedBoost();
                 }
             }
         }
@@ -647,4 +817,126 @@ void Level1::drawLampPosts(float playerZ, bool isNight)
         glPopMatrix();
         glPopMatrix();
     }
+}
+
+void Level1::drawTrafficLight(float scale) {
+    glPushMatrix();
+    glScalef(scale, scale, scale);
+    
+    // Pole (black)
+    glColor3f(0.1f, 0.1f, 0.1f);
+    glPushMatrix();
+    glTranslatef(0.0f, -0.5f, 0.0f);
+    glRotatef(-90, 1, 0, 0);
+    GLUquadricObj *qobj = gluNewQuadric();
+    gluCylinder(qobj, 0.1, 0.1, 1.0, 10, 10);
+    gluDeleteQuadric(qobj);
+    glPopMatrix();
+    
+    // Traffic light housing (dark gray)
+    glColor3f(0.2f, 0.2f, 0.2f);
+    glPushMatrix();
+    glScalef(0.4f, 0.9f, 0.3f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    
+    // Red light (top)
+    glPushMatrix();
+    glTranslatef(0.0f, 0.25f, 0.16f);
+    glColor3f(0.5f, 0.0f, 0.0f); // Dim red
+    glutSolidSphere(0.12f, 10, 10);
+    glPopMatrix();
+    
+    // Yellow light (middle) - GLOWING
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.16f);
+    
+    // Outer glow
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glColor4f(1.0f, 1.0f, 0.0f, 0.3f);
+    glutSolidSphere(0.18f, 10, 10);
+    glDisable(GL_BLEND);
+    
+    // Bright core
+    glColor3f(1.0f, 1.0f, 0.0f);
+    glutSolidSphere(0.12f, 10, 10);
+    glPopMatrix();
+    
+    // Green light (bottom)
+    glPushMatrix();
+    glTranslatef(0.0f, -0.25f, 0.16f);
+    glColor3f(0.0f, 0.3f, 0.0f); // Dim green
+    glutSolidSphere(0.12f, 10, 10);
+    glPopMatrix();
+    
+    glPopMatrix();
+}
+
+void Level1::drawSpeedBoost(float scale) {
+    glPushMatrix();
+    glScalef(scale, scale, scale);
+    
+    // Double arrow pointing upwards/forwards
+    
+    // Base platform (glowing cyan)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glColor4f(0.0f, 1.0f, 1.0f, 0.4f);
+    glPushMatrix();
+    glTranslatef(0.0f, -0.3f, 0.0f);
+    glScalef(0.8f, 0.1f, 0.8f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    glDisable(GL_BLEND);
+    
+    // First arrow (bottom)
+    glColor3f(0.0f, 1.0f, 1.0f); // Bright cyan
+    
+    // Arrow shaft
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.0f);
+    glScalef(0.15f, 0.5f, 0.15f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    
+    // Arrow head (pyramid)
+    glPushMatrix();
+    glTranslatef(0.0f, 0.35f, 0.0f);
+    glRotatef(-90, 1, 0, 0);
+    glutSolidCone(0.3f, 0.4f, 4, 1);
+    glPopMatrix();
+    
+    // Second arrow (top) - slightly offset
+    glColor3f(0.5f, 1.0f, 1.0f); // Lighter cyan
+    
+    // Arrow shaft
+    glPushMatrix();
+    glTranslatef(0.0f, 0.5f, 0.0f);
+    glScalef(0.12f, 0.4f, 0.12f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+    
+    // Arrow head (pyramid)
+    glPushMatrix();
+    glTranslatef(0.0f, 0.8f, 0.0f);
+    glRotatef(-90, 1, 0, 0);
+    glutSolidCone(0.25f, 0.35f, 4, 1);
+    glPopMatrix();
+    
+    // Add sparkle effect with small rotating cubes
+    glPushMatrix();
+    glRotatef(scale * 100.0f, 0, 1, 0);
+    for (int i = 0; i < 4; i++) {
+        glPushMatrix();
+        glRotatef(i * 90, 0, 1, 0);
+        glTranslatef(0.5f, 0.4f, 0.0f);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glScalef(0.05f, 0.05f, 0.05f);
+        glutSolidCube(1.0f);
+        glPopMatrix();
+    }
+    glPopMatrix();
+    
+    glPopMatrix();
 }
