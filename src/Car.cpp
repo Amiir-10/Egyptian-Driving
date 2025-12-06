@@ -23,7 +23,7 @@ void Car::init()
         // Model vertices are at ~(11553, 980, -6767), so after 0.001 scale ~(11.5, 1, -6.8)
         // We need to offset to center it (in world space, after scaling)
         carModel.scale = 0.001f; // Model is huge (~11000 units), scale way down
-        carModel.lit = false;    // Disable model's internal lighting
+        carModel.lit = true;     // Enable model's internal lighting for proper shading
 
         // Offset to approximately center the model (in world coordinates, post-scale)
         carModel.pos.x = -11.5f;
@@ -153,20 +153,29 @@ void Car::draw()
     {
         glPushMatrix();
 
-        // Disable lighting and textures temporarily to see model geometry clearly
-        glDisable(GL_LIGHTING);
-        glDisable(GL_TEXTURE_2D);
+        // Enable textures for the 3D model
+        glEnable(GL_TEXTURE_2D);
+        glEnable(GL_LIGHTING);
 
-        // Set a visible color for the model
-        glColor3f(0.8f, 0.2f, 0.2f); // Red color for visibility
+        // Set up metallic/shiny material properties for the car
+        GLfloat matSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f}; // Bright white specular highlights
+        GLfloat matShininess[] = {100.0f};                // High shininess for metallic look (0-128)
+        GLfloat matAmbient[] = {0.1f, 0.1f, 0.2f, 1.0f};  // Slight blue ambient for metallic feel
+
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
+
+        // Set color to white so textures display correctly
+        glColor3f(1.0f, 1.0f, 1.0f);
 
         carModel.Draw();
-        ;
 
-        // Re-enable lighting;;
-
-        // Re-enable lighting
-        glEnable(GL_LIGHTING);
+        // Reset material properties to default
+        GLfloat defaultSpecular[] = {0.0f, 0.0f, 0.0f, 1.0f};
+        GLfloat defaultShininess[] = {0.0f};
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, defaultSpecular);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, defaultShininess);
 
         glPopMatrix();
     }
