@@ -22,10 +22,6 @@ public:
     void toggleLights();
     void setBoost(bool on); // New method
 
-    // Powerups
-    void applySpeedBoost();
-    void clearTraffic();
-
     // Getters
     float getX() const { return x; }
     float getZ() const { return z; }
@@ -33,8 +29,6 @@ public:
     float getSpeed() const { return speed; }
     bool isLightsOn() const { return lightsOn; }
 
-    bool hasTrafficClear() const { return trafficClearActive; }
-    
     // Setters
     void setZ(float newZ) { z = newZ; }
 
@@ -58,12 +52,6 @@ private:
     bool isTurningLeft;
     bool isTurningRight;
     bool lightsOn;
-
-    // Powerup states
-    bool speedBoostActive;
-    float boostTimer;
-    bool trafficClearActive;
-    float trafficClearTimer;
 
     void drawBody();
     void drawWheels();

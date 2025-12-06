@@ -242,7 +242,6 @@ void Game::handleInput(unsigned char key, int x, int y)
             if (currentLevel)
                 delete currentLevel;
             currentLevel = nullptr; // Will be recreated in update
-            playerCar.setZ(0.0f); // Reset car position
         }
     }
     else if (currentState == LEVEL1_WIN)

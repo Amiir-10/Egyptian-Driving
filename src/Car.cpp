@@ -66,10 +66,6 @@ void Car::reset(float startX, float startZ)
     isTurningRight = false;
     lightsOn = true;
     boostMultiplier = 1.0f;
-    speedBoostActive = false;
-    boostTimer = 0.0f;
-    trafficClearActive = false;
-    trafficClearTimer = 0.0f;
 }
 
 void Car::accelerate(bool on) { isAccelerating = on; }
@@ -98,37 +94,6 @@ void Car::update()
     }
     else
     {
-void Car::update() {
-    // Update powerup timers
-    if (speedBoostActive) {
-        boostTimer -= 0.016f; // ~60 FPS
-        if (boostTimer <= 0) {
-            speedBoostActive = false;
-        }
-    }
-    
-    if (trafficClearActive) {
-        trafficClearTimer -= 0.016f;
-        if (trafficClearTimer <= 0) {
-            trafficClearActive = false;
-        }
-    }
-
-    // Speed control
-    float currentAccel = ACCELERATION;
-    float currentMaxSpeed = MAX_SPEED;
-    
-    // Apply speed boost
-    if (speedBoostActive) {
-        currentAccel = ACCELERATION * 2.0f;
-        currentMaxSpeed = MAX_SPEED * 1.5f;
-    }
-    
-    if (isAccelerating) {
-        speed += currentAccel;
-    } else if (isBraking) {
-        speed -= currentAccel;
-    } else {
         // Friction
         if (speed > 0)
             speed -= FRICTION;
@@ -143,8 +108,6 @@ void Car::update() {
         speed = effectiveMax;
     if (speed < -effectiveMax / 2)
         speed = -effectiveMax / 2;
-    if (speed > currentMaxSpeed) speed = currentMaxSpeed;
-    if (speed < -currentMaxSpeed / 2) speed = -currentMaxSpeed / 2;
 
     // Turning (Allow turning even if slow, but maybe less?)
     // User said "I have no way to steer". Maybe they were stopped?
@@ -341,17 +304,6 @@ void Car::drawBody()
 
 void Car::drawWheels()
 {
-void Car::applySpeedBoost() {
-    speedBoostActive = true;
-    boostTimer = 5.0f; // 5 seconds boost
-}
-
-void Car::clearTraffic() {
-    trafficClearActive = true;
-    trafficClearTimer = 8.0f; // 8 seconds clear traffic
-}
-
-void Car::drawWheels() {
     glColor3f(0.1f, 0.1f, 0.1f); // Black wheels
 
     float wheelX = 0.45f;
