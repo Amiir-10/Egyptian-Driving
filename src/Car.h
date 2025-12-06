@@ -2,15 +2,18 @@
 #define CAR_H
 
 #include <GL/glut.h>
+#include "Model_3DS.h"
 
-class Car {
+class Car
+{
 public:
     Car();
-    
+
+    void init(); // Load 3D model
     void reset(float x, float z);
     void update();
     void draw();
-    
+
     // Controls
     void accelerate(bool on);
     void brake(bool on);
@@ -25,7 +28,7 @@ public:
     float getRotation() const { return rotation; }
     float getSpeed() const { return speed; }
     bool isLightsOn() const { return lightsOn; }
-    
+
     // Setters
     void setZ(float newZ) { z = newZ; }
 
@@ -33,11 +36,11 @@ private:
     float x, z;
     float rotation; // Degrees
     float speed;
-    float tiltAngle; // For turning effect
+    float tiltAngle;       // For turning effect
     float boostMultiplier; // New member
-    
+
     // Physics constants
-    const float MAX_SPEED = 0.3f; // Slower
+    const float MAX_SPEED = 0.3f;      // Slower
     const float ACCELERATION = 0.005f; // Slower acceleration
     const float FRICTION = 0.002f;
     const float TURN_SPEED = 2.5f;
@@ -52,6 +55,10 @@ private:
 
     void drawBody();
     void drawWheels();
+
+    // 3D Model
+    Model_3DS carModel;
+    bool modelLoaded;
 };
 
 #endif

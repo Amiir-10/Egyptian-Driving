@@ -5,11 +5,58 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-Car::Car() {
+Car::Car()
+{
+    modelLoaded = false;
     reset(0, 0);
 }
 
-void Car::reset(float startX, float startZ) {
+void Car::init()
+{
+    // Load the 3D car model
+    carModel.Load((char *)"Models/car/your_car.3ds");
+
+    if (carModel.numObjects > 0)
+    {
+        modelLoaded = true;
+        // Set model properties - adjust scale as needed
+        // Model vertices are at ~(11553, 980, -6767), so after 0.001 scale ~(11.5, 1, -6.8)
+        // We need to offset to center it (in world space, after scaling)
+        carModel.scale = 0.001f; // Model is huge (~11000 units), scale way down
+        carModel.lit = false;    // Disable model's internal lighting
+
+        // Offset to approximately center the model (in world coordinates, post-scale)
+        carModel.pos.x = -11.5f;
+        carModel.pos.y = -1.0f;
+        carModel.pos.z = 6.8f;
+
+        // Debug: Print info about loaded objects
+        printf("Car model loaded: %d objects, %d materials\n", carModel.numObjects, carModel.numMaterials);
+        int validObjects = 0;
+        int totalVerts = 0;
+        int totalFaces = 0;
+        int totalMatFaces = 0;
+        for (int i = 0; i < carModel.numObjects && i < 10; i++)
+        {
+            if (carModel.Objects[i].numVerts > 0)
+            {
+                validObjects++;
+                totalVerts += carModel.Objects[i].numVerts;
+                totalFaces += carModel.Objects[i].numFaces;
+                totalMatFaces += carModel.Objects[i].numMatFaces;
+            }
+        }
+        printf("First 10 objects: %d valid, %d verts, %d faces, %d matFaces\n", validObjects, totalVerts, totalFaces, totalMatFaces);
+        fflush(stdout);
+    }
+    else
+    {
+        modelLoaded = false;
+    }
+}
+
+void Car::reset(float startX, float startZ)
+{
     x = startX;
     z = startZ;
     rotation = 0.0f;
@@ -26,48 +73,67 @@ void Car::brake(bool on) { isBraking = on; }
 void Car::turnLeft(bool on) { isTurningLeft = on; }
 void Car::turnRight(bool on) { isTurningRight = on; }
 void Car::toggleLights() { lightsOn = !lightsOn; }
-void Car::setBoost(bool on) { 
-    boostMultiplier = on ? 2.0f : 1.0f; 
+void Car::setBoost(bool on)
+{
+    boostMultiplier = on ? 2.0f : 1.0f;
 }
 
-void Car::update() {
+void Car::update()
+{
     // Speed control
     float effectiveAccel = ACCELERATION * boostMultiplier;
     float effectiveMax = MAX_SPEED * boostMultiplier;
 
-    if (isAccelerating) {
+    if (isAccelerating)
+    {
         speed += effectiveAccel;
-    } else if (isBraking) {
+    }
+    else if (isBraking)
+    {
         speed -= effectiveAccel;
-    } else {
+    }
+    else
+    {
         // Friction
-        if (speed > 0) speed -= FRICTION;
-        if (speed < 0) speed += FRICTION;
-        if (std::abs(speed) < FRICTION) speed = 0;
+        if (speed > 0)
+            speed -= FRICTION;
+        if (speed < 0)
+            speed += FRICTION;
+        if (std::abs(speed) < FRICTION)
+            speed = 0;
     }
 
     // Cap speed
-    if (speed > effectiveMax) speed = effectiveMax;
-    if (speed < -effectiveMax / 2) speed = -effectiveMax / 2;
+    if (speed > effectiveMax)
+        speed = effectiveMax;
+    if (speed < -effectiveMax / 2)
+        speed = -effectiveMax / 2;
 
     // Turning (Allow turning even if slow, but maybe less?)
     // User said "I have no way to steer". Maybe they were stopped?
     // Let's allow steering if speed is non-zero OR if accelerating (burnout style?)
     // For now, keep speed check but ensure TURN_SPEED is effective.
-    if (std::abs(speed) > 0.001f) {
+    if (std::abs(speed) > 0.001f)
+    {
         float turnFactor = (speed > 0) ? 1.0f : -1.0f;
-        if (isTurningLeft) rotation += TURN_SPEED * turnFactor;
-        if (isTurningRight) rotation -= TURN_SPEED * turnFactor;
+        if (isTurningLeft)
+            rotation += TURN_SPEED * turnFactor;
+        if (isTurningRight)
+            rotation -= TURN_SPEED * turnFactor;
     }
 
     // Tilt Logic
     float targetTilt = 0.0f;
-    if (isTurningLeft) targetTilt = -MAX_TILT;
-    if (isTurningRight) targetTilt = MAX_TILT;
-    
+    if (isTurningLeft)
+        targetTilt = -MAX_TILT;
+    if (isTurningRight)
+        targetTilt = MAX_TILT;
+
     // Interpolate tilt
-    if (tiltAngle < targetTilt) tiltAngle += 1.0f;
-    if (tiltAngle > targetTilt) tiltAngle -= 1.0f;
+    if (tiltAngle < targetTilt)
+        tiltAngle += 1.0f;
+    if (tiltAngle > targetTilt)
+        tiltAngle -= 1.0f;
 
     // Update position
     float rad = rotation * M_PI / 180.0f;
@@ -75,28 +141,55 @@ void Car::update() {
     z += cos(rad) * speed;
 }
 
-void Car::draw() {
+void Car::draw()
+{
     glPushMatrix();
-    glTranslatef(x, 0.5f, z); // Lift car slightly above ground
+    glTranslatef(x, 1.0f, z); // Lift car above ground (raised for 3D model)
     glRotatef(rotation, 0, 1, 0);
     glRotatef(tiltAngle, 0, 0, 1); // Apply tilt (Roll)
 
-    drawBody();
-    drawWheels();
+    // Draw 3D model if loaded, otherwise fall back to primitive shapes
+    if (modelLoaded)
+    {
+        glPushMatrix();
+
+        // Disable lighting and textures temporarily to see model geometry clearly
+        glDisable(GL_LIGHTING);
+        glDisable(GL_TEXTURE_2D);
+
+        // Set a visible color for the model
+        glColor3f(0.8f, 0.2f, 0.2f); // Red color for visibility
+
+        carModel.Draw();
+        ;
+
+        // Re-enable lighting;;
+
+        // Re-enable lighting
+        glEnable(GL_LIGHTING);
+
+        glPopMatrix();
+    }
+    else
+    {
+        drawBody();
+        drawWheels();
+    }
 
     // Headlights
-    if (lightsOn) {
+    if (lightsOn)
+    {
         glEnable(GL_LIGHT1);
         glEnable(GL_LIGHT2);
 
         // Light properties
-        GLfloat lightCol[] = { 1.0f, 1.0f, 0.8f, 1.0f }; // Yellowish
-        GLfloat lightAmb[] = { 0.0f, 0.0f, 0.0f, 1.0f }; // NO AMBIENT to avoid global filter effect
-        
+        GLfloat lightCol[] = {1.0f, 1.0f, 0.8f, 1.0f}; // Yellowish
+        GLfloat lightAmb[] = {0.0f, 0.0f, 0.0f, 1.0f}; // NO AMBIENT to avoid global filter effect
+
         // Spotlight properties
-        GLfloat spotDir[] = { 0.0f, -0.5f, 1.0f }; // Down and forward
-        GLfloat spotCutoff = 30.0f; // Narrower cone
-        GLfloat spotExp = 10.0f;    // More focused towards center
+        GLfloat spotDir[] = {0.0f, -0.5f, 1.0f}; // Down and forward
+        GLfloat spotCutoff = 30.0f;              // Narrower cone
+        GLfloat spotExp = 10.0f;                 // More focused towards center
 
         // Attenuation (Makes light fade with distance)
         // Formula: 1 / (Kc + Kl*d + Kq*d^2)
@@ -110,13 +203,13 @@ void Car::draw() {
 
         // Left Headlight
         glPushMatrix();
-        glTranslatef(-0.3f, 0.0f, 0.9f); // Front Left
-        
+        glTranslatef(0.7f, -0.3f, 2.2f); // Front Left (adjusted to match 3D model headlights)
+
         // Visual representation (The bulb)
         glDisable(GL_LIGHTING);
         glColor3f(1.0f, 1.0f, 0.5f);
         glutSolidSphere(0.1, 10, 10);
-        
+
         // Light Beam (Volumetric effect)
         glColor4f(1.0f, 1.0f, 0.8f, 0.2f); // Transparent yellow
         glPushMatrix();
@@ -125,7 +218,7 @@ void Car::draw() {
         // glutSolidCone draws Base at 0, Tip at Length
         // We want the opposite: Tip at 0, Base at Length
         // So we translate to Length, and scale Z by -1 to flip it back to 0
-        glTranslatef(0.0f, 0.0f, 4.0f); 
+        glTranslatef(0.0f, 0.0f, 4.0f);
         glScalef(1.0f, 1.0f, -1.0f);
         glutSolidCone(0.5, 4.0, 10, 10);
         glPopMatrix();
@@ -133,7 +226,7 @@ void Car::draw() {
         glEnable(GL_LIGHTING);
 
         // The Light Source
-        GLfloat pos1[] = { 0.0f, 0.0f, 0.0f, 1.0f }; // Relative to this pushmatrix
+        GLfloat pos1[] = {0.0f, 0.0f, 0.0f, 1.0f}; // Relative to this pushmatrix
         glLightfv(GL_LIGHT1, GL_POSITION, pos1);
         glLightfv(GL_LIGHT1, GL_DIFFUSE, lightCol);
         glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmb);
@@ -143,13 +236,13 @@ void Car::draw() {
         glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, Kc);
         glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, Kl);
         glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, Kq);
-        
+
         glPopMatrix();
 
         // Right Headlight
         glPushMatrix();
-        glTranslatef(0.3f, 0.0f, 0.9f); // Front Right
-        
+        glTranslatef(-0.3f, -0.3f, 2.2f); // Front Right (adjusted to match 3D model headlights)
+
         // Visual representation
         glDisable(GL_LIGHTING);
         glColor3f(1.0f, 1.0f, 0.5f);
@@ -159,7 +252,7 @@ void Car::draw() {
         glColor4f(1.0f, 1.0f, 0.8f, 0.2f); // Transparent yellow
         glPushMatrix();
         glRotatef(10, 1, 0, 0); // Angle down slightly (was 20, now 10)
-        glTranslatef(0.0f, 0.0f, 4.0f); 
+        glTranslatef(0.0f, 0.0f, 4.0f);
         glScalef(1.0f, 1.0f, -1.0f);
         glutSolidCone(0.5, 4.0, 10, 10);
         glPopMatrix();
@@ -167,7 +260,7 @@ void Car::draw() {
         glEnable(GL_LIGHTING);
 
         // The Light Source
-        GLfloat pos2[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        GLfloat pos2[] = {0.0f, 0.0f, 0.0f, 1.0f};
         glLightfv(GL_LIGHT2, GL_POSITION, pos2);
         glLightfv(GL_LIGHT2, GL_DIFFUSE, lightCol);
         glLightfv(GL_LIGHT2, GL_AMBIENT, lightAmb);
@@ -181,8 +274,9 @@ void Car::draw() {
         glPopMatrix();
 
         glDisable(GL_BLEND);
-
-    } else {
+    }
+    else
+    {
         glDisable(GL_LIGHT1);
         glDisable(GL_LIGHT2);
     }
@@ -190,7 +284,8 @@ void Car::draw() {
     glPopMatrix();
 }
 
-void Car::drawBody() {
+void Car::drawBody()
+{
     // Main body
     glColor3f(0.8f, 0.1f, 0.1f); // Red car
     glPushMatrix();
@@ -207,9 +302,10 @@ void Car::drawBody() {
     glPopMatrix();
 }
 
-void Car::drawWheels() {
+void Car::drawWheels()
+{
     glColor3f(0.1f, 0.1f, 0.1f); // Black wheels
-    
+
     float wheelX = 0.45f;
     float wheelY = -0.2f;
     float wheelZ = 0.5f;
