@@ -14,12 +14,52 @@ Level1::Level1()
     speedBoostTimer = 0.0f;
     speedBoostActive = false;
     animationTime = 0.0f;
+    obstacleModelLoaded = false;
 }
 
 void Level1::init()
 {
     cars.clear();
     powerups.clear();
+
+    // Load obstacle car 3D model (only once)
+    if (!obstacleModelLoaded)
+    {
+        obstacleCarModel.Load((char *)"Models/obstacle_car/obstacle_car.3ds");
+
+        if (obstacleCarModel.numObjects > 0 && obstacleCarModel.Objects[0].numVerts > 0)
+        {
+            obstacleModelLoaded = true;
+
+            // Print first vertex to debug scale
+            float firstX = obstacleCarModel.Objects[0].Vertexes[0];
+            float firstY = obstacleCarModel.Objects[0].Vertexes[1];
+            float firstZ = obstacleCarModel.Objects[0].Vertexes[2];
+            printf("Obstacle car first vertex: (%.2f, %.2f, %.2f)\n", firstX, firstY, firstZ);
+
+            // This model has small coordinates (around 1-10), so use larger scale
+            // Adjust scale to make car visually larger
+            obstacleCarModel.scale = 1.0f; // Increased significantly for larger visible cars
+            obstacleCarModel.lit = true;
+
+            // Auto-calculate offset to center the model (X and Z only)
+            // Keep Y at 0 so the car sits on the road properly
+            obstacleCarModel.pos.x = -firstX * obstacleCarModel.scale;
+            obstacleCarModel.pos.y = 0.0f; // Don't offset Y, let glTranslate handle height
+            obstacleCarModel.pos.z = -firstZ * obstacleCarModel.scale;
+
+            printf("Obstacle car model loaded: %d objects, %d materials\n",
+                   obstacleCarModel.numObjects, obstacleCarModel.numMaterials);
+            printf("Obstacle car scale: %.3f, offset: (%.2f, %.2f, %.2f)\n",
+                   obstacleCarModel.scale, obstacleCarModel.pos.x, obstacleCarModel.pos.y, obstacleCarModel.pos.z);
+            fflush(stdout);
+        }
+        else
+        {
+            printf("Warning: Obstacle car model failed to load or has no objects/vertices\n");
+            fflush(stdout);
+        }
+    }
 
     noTrafficTimer = 0.0f;
     noTrafficActive = false;
@@ -52,15 +92,16 @@ void Level1::spawnCar()
     // Spawn ahead of the player (we need player Z, but here we just spawn relative to "current" road end?)
     // Better: Spawn relative to a "spawnZ" we track, or just far ahead.
     // For now, let's just spawn randomly in a range.
-    car.z = 0; // Placeholder, set in update
-    car.width = 2.0f;
-    car.length = 4.0f;
+    car.z = 0;                                   // Placeholder, set in update
+    car.width = 1.2f;                            // Reduced hitbox width for tighter collision
+    car.length = 2.5f;                           // Reduced hitbox length for tighter collision
     car.speed = 0.05f + ((rand() % 5) / 100.0f); // Slower speed (0.05 - 0.1)
     car.active = false;                          // Inactive until placed
 
     car.targetX = 0;
     car.isMovingAside = false;
     car.originalX = 0;
+    car.colorIndex = rand() % 3; // Random: 0=red, 1=yellow, 2=orange
 
     cars.push_back(car);
 }
@@ -226,10 +267,78 @@ void Level1::drawObstacles()
         glPushMatrix();
         glTranslatef(car.x, 1.0f, car.z);
 
-        // Car Body
-        glColor3f(0.0f, 0.0f, 0.8f); // Blue cars
-        glScalef(car.width, 1.5f, car.length);
-        glutSolidCube(1.0f);
+        if (obstacleModelLoaded)
+        {
+            // Enable lighting for the 3D model
+            glEnable(GL_LIGHTING);
+
+            // Enable textures in case the model has them
+            glEnable(GL_TEXTURE_2D);
+
+            // Set up metallic/shiny material properties
+            GLfloat matSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            GLfloat matShininess[] = {100.0f};
+
+            // Set color based on car's random colorIndex (0=red, 1=yellow, 2=orange)
+            GLfloat matAmbient[4];
+            float r, g, b;
+            switch (car.colorIndex)
+            {
+            case 0: // Red
+                r = 0.9f;
+                g = 0.1f;
+                b = 0.1f;
+                matAmbient[0] = 0.3f;
+                matAmbient[1] = 0.05f;
+                matAmbient[2] = 0.05f;
+                matAmbient[3] = 1.0f;
+                break;
+            case 1: // Yellow
+                r = 1.0f;
+                g = 0.9f;
+                b = 0.1f;
+                matAmbient[0] = 0.3f;
+                matAmbient[1] = 0.3f;
+                matAmbient[2] = 0.05f;
+                matAmbient[3] = 1.0f;
+                break;
+            case 2: // Orange
+            default:
+                r = 1.0f;
+                g = 0.5f;
+                b = 0.1f;
+                matAmbient[0] = 0.3f;
+                matAmbient[1] = 0.15f;
+                matAmbient[2] = 0.05f;
+                matAmbient[3] = 1.0f;
+                break;
+            }
+
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
+
+            // Set the car's color
+            glColor3f(r, g, b);
+
+            // Rotate to face correct direction (180 - 90 = 90 degrees)
+            glRotatef(90.0f, 0, 1, 0);
+
+            obstacleCarModel.Draw();
+
+            // Reset material properties
+            GLfloat defaultSpecular[] = {0.0f, 0.0f, 0.0f, 1.0f};
+            GLfloat defaultShininess[] = {0.0f};
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, defaultSpecular);
+            glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, defaultShininess);
+        }
+        else
+        {
+            // Fallback to simple cube if model not loaded
+            glColor3f(0.0f, 0.0f, 0.8f); // Blue cars
+            glScalef(car.width, 1.5f, car.length);
+            glutSolidCube(1.0f);
+        }
 
         glPopMatrix();
     }
