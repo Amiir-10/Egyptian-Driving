@@ -12,6 +12,7 @@ Level1::Level1() {
     noTrafficActive = false;
     speedBoostTimer = 0.0f;
     speedBoostActive = false;
+    animationTime = 0.0f;
 }
 
 void Level1::init() {
@@ -91,6 +92,9 @@ void Level1::render(Car& car, bool isNight) {
     
     drawObstacles();
     drawCollectibles();
+
+    // Update animation time (approx 60 FPS)
+    animationTime += 0.05f;
 
     // Draw No Traffic Timer
     if (noTrafficActive) {
@@ -223,9 +227,15 @@ void Level1::drawCollectibles() {
 
         if (p.type == 0) { // Traffic Light
             glColor3f(1.0f, 1.0f, 0.0f);
+            // Pulsating Animation
+            float scale = 1.0f + 0.2f * sin(animationTime);
+            glScalef(scale, scale, scale);
             glutSolidCube(1.0f);
         } else { // Boost
             glColor3f(0.0f, 1.0f, 1.0f);
+            // Floating Animation
+            float offset = 0.5f * sin(animationTime);
+            glTranslatef(0.0f, offset, 0.0f);
             glutSolidCone(0.5f, 1.0f, 10, 2);
         }
 

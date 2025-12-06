@@ -32,6 +32,7 @@ private:
 
     float speedBoostTimer;
     bool speedBoostActive;
+    float animationTime; // For scaling animation
 
     void spawnCar();
     void drawRoad(float playerZ);
