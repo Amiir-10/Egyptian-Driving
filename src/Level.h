@@ -5,26 +5,31 @@
 
 #include "Car.h"
 
-struct Obstacle {
+struct Obstacle
+{
     float x, z;
     float width, length;
     float speed;
     bool active;
-    
+
     // Smart behavior
     float targetX;
     bool isMovingAside;
     float originalX;
+
+    // Random color (0 = red, 1 = yellow, 2 = orange)
+    int colorIndex;
 };
 
-class Level {
+class Level
+{
 public:
     virtual ~Level() {}
     virtual void init() = 0;
     virtual void update() = 0;
-    virtual void render(Car& car, bool isNight) = 0;
-    virtual bool checkCollisions(Car& car) = 0;
-    virtual bool isFinished(Car& car) = 0;
+    virtual void render(Car &car, bool isNight) = 0;
+    virtual bool checkCollisions(Car &car) = 0;
+    virtual bool isFinished(Car &car) = 0;
 };
 
 #endif
