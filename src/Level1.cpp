@@ -15,6 +15,7 @@ Level1::Level1()
     speedBoostActive = false;
     animationTime = 0.0f;
     obstacleModelLoaded = false;
+    noTrafficModelLoaded = false;
 }
 
 void Level1::init()
@@ -57,6 +58,56 @@ void Level1::init()
         else
         {
             printf("Warning: Obstacle car model failed to load or has no objects/vertices\n");
+            fflush(stdout);
+        }
+    }
+
+    // Load No Traffic power-up 3D model (only once)
+    if (!noTrafficModelLoaded)
+    {
+        noTrafficModel.Load((char *)"Models/no_traffic/no_traffic.3ds");
+
+        if (noTrafficModel.numObjects > 0 && noTrafficModel.Objects[0].numVerts > 0)
+        {
+            noTrafficModelLoaded = true;
+
+            // Print first vertex to debug scale
+            float firstX = noTrafficModel.Objects[0].Vertexes[0];
+            float firstY = noTrafficModel.Objects[0].Vertexes[1];
+            float firstZ = noTrafficModel.Objects[0].Vertexes[2];
+            printf("No Traffic model first vertex: (%.2f, %.2f, %.2f)\n", firstX, firstY, firstZ);
+
+            // Determine scale based on vertex magnitude
+            float magnitude = sqrt(firstX * firstX + firstY * firstY + firstZ * firstZ);
+            if (magnitude > 1000.0f)
+            {
+                noTrafficModel.scale = 0.002f; // Large model - adjusted for visibility
+            }
+            else if (magnitude > 100.0f)
+            {
+                noTrafficModel.scale = 0.03f; // Medium model
+            }
+            else
+            {
+                noTrafficModel.scale = 1.0f; // Small model
+            }
+            noTrafficModel.lit = true;
+
+            // Auto-calculate offset to center the model (X and Z only)
+            // Keep Y at 0 so it floats at the right height
+            noTrafficModel.pos.x = -firstX * noTrafficModel.scale;
+            noTrafficModel.pos.y = 0.0f; // Don't offset Y, let glTranslate handle height
+            noTrafficModel.pos.z = -firstZ * noTrafficModel.scale;
+
+            printf("No Traffic model loaded: %d objects, %d materials\n",
+                   noTrafficModel.numObjects, noTrafficModel.numMaterials);
+            printf("No Traffic scale: %.3f, offset: (%.2f, %.2f, %.2f)\n",
+                   noTrafficModel.scale, noTrafficModel.pos.x, noTrafficModel.pos.y, noTrafficModel.pos.z);
+            fflush(stdout);
+        }
+        else
+        {
+            printf("Warning: No Traffic model failed to load or has no objects/vertices\n");
             fflush(stdout);
         }
     }
@@ -265,7 +316,7 @@ void Level1::drawObstacles()
             continue;
 
         glPushMatrix();
-        glTranslatef(car.x, 1.0f, car.z);
+        glTranslatef(car.x, 0.3f, car.z); // Lowered from 1.0 to sit on road
 
         if (obstacleModelLoaded)
         {
@@ -356,12 +407,51 @@ void Level1::drawCollectibles()
         glRotatef(p.rotation, 0, 1, 0);
 
         if (p.type == 0)
-        { // Traffic Light
-            glColor3f(1.0f, 1.0f, 0.0f);
+        { // No Traffic power-up
             // Pulsating Animation
             float scale = 1.0f + 0.2f * sin(animationTime);
             glScalef(scale, scale, scale);
-            glutSolidCube(1.0f);
+
+            if (noTrafficModelLoaded)
+            {
+                glEnable(GL_LIGHTING);
+                glEnable(GL_TEXTURE_2D);
+
+                // Ensure texture modulation works correctly
+                glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+                // Set up good lighting for the model
+                GLfloat matSpecular[] = {0.8f, 0.8f, 0.8f, 1.0f};
+                GLfloat matShininess[] = {60.0f};
+                GLfloat matAmbient[] = {0.5f, 0.5f, 0.2f, 1.0f};  // Yellowish ambient
+                GLfloat matDiffuse[] = {1.0f, 1.0f, 0.3f, 1.0f};  // Yellow diffuse
+                GLfloat matEmission[] = {0.2f, 0.2f, 0.0f, 1.0f}; // Slight glow
+
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, matDiffuse);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, matEmission);
+
+                // Yellow-ish color to make it visible and match "no traffic" theme
+                glColor3f(1.0f, 0.9f, 0.2f);
+
+                noTrafficModel.Draw();
+
+                // Reset material properties
+                GLfloat defaultSpecular[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                GLfloat defaultShininess[] = {0.0f};
+                GLfloat defaultEmission[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, defaultSpecular);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, defaultShininess);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, defaultEmission);
+            }
+            else
+            {
+                // Fallback to yellow cube
+                glColor3f(1.0f, 1.0f, 0.0f);
+                glutSolidCube(1.0f);
+            }
         }
         else
         { // Boost
