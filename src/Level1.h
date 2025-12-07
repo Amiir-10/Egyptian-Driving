@@ -41,6 +41,10 @@ private:
     Model_3DS obstacleCarModel;
     bool obstacleModelLoaded;
 
+    // No Traffic power-up 3D model
+    Model_3DS noTrafficModel;
+    bool noTrafficModelLoaded;
+
     void spawnCar();
     void drawRoad(float playerZ);
     void drawGround(float playerZ);

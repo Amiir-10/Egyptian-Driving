@@ -881,6 +881,9 @@ void Model_3DS::MapNameChunkProcessor(long length, long findex, int matindex)
     char fullname[256];
     sprintf(fullname, "%s%s", path, n.c_str());
 
+    printf("Loading texture: %s\n", fullname);
+    fflush(stdout);
+
     Materials[matindex].tex.Load(fullname);
 
     Materials[matindex].textured = true;
