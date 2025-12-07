@@ -15,6 +15,8 @@ Level1::Level1()
     speedBoostActive = false;
     animationTime = 0.0f;
     obstacleModelLoaded = false;
+    noTrafficModelLoaded = false;
+    boostModelLoaded = false;
 }
 
 void Level1::init()
@@ -57,6 +59,54 @@ void Level1::init()
         else
         {
             printf("Warning: Obstacle car model failed to load or has no objects/vertices\n");
+            fflush(stdout);
+        }
+    }
+
+    // Load No Traffic power-up model
+    if (!noTrafficModelLoaded)
+    {
+        noTrafficModel.Load((char *)"Models/no_traffic/no_traffic.3ds");
+
+        if (noTrafficModel.numObjects > 0 && noTrafficModel.Objects[0].numVerts > 0)
+        {
+            noTrafficModelLoaded = true;
+            float firstX = noTrafficModel.Objects[0].Vertexes[0];
+            float firstY = noTrafficModel.Objects[0].Vertexes[1];
+            float firstZ = noTrafficModel.Objects[0].Vertexes[2];
+            printf("No Traffic first vertex: (%.2f, %.2f, %.2f)\n", firstX, firstY, firstZ);
+
+            noTrafficModel.scale = 0.002f;
+            noTrafficModel.lit = true;
+            noTrafficModel.pos.x = -firstX * noTrafficModel.scale;
+            noTrafficModel.pos.y = 0.0f;
+            noTrafficModel.pos.z = -firstZ * noTrafficModel.scale;
+
+            printf("No Traffic model loaded: %d objects\n", noTrafficModel.numObjects);
+            fflush(stdout);
+        }
+    }
+
+    // Load Boost power-up model
+    if (!boostModelLoaded)
+    {
+        boostModel.Load((char *)"Models/boost/boost.3ds");
+
+        if (boostModel.numObjects > 0 && boostModel.Objects[0].numVerts > 0)
+        {
+            boostModelLoaded = true;
+            float firstX = boostModel.Objects[0].Vertexes[0];
+            float firstY = boostModel.Objects[0].Vertexes[1];
+            float firstZ = boostModel.Objects[0].Vertexes[2];
+            printf("Boost first vertex: (%.2f, %.2f, %.2f)\n", firstX, firstY, firstZ);
+
+            boostModel.scale = 4.0f;
+            boostModel.lit = true;
+            boostModel.pos.x = -firstX * boostModel.scale;
+            boostModel.pos.y = 0.0f;
+            boostModel.pos.z = -firstZ * boostModel.scale;
+
+            printf("Boost model loaded: %d objects\n", boostModel.numObjects);
             fflush(stdout);
         }
     }
@@ -352,24 +402,104 @@ void Level1::drawCollectibles()
             continue;
 
         glPushMatrix();
-        glTranslatef(p.x, 1.0f, p.z);
-        glRotatef(p.rotation, 0, 1, 0);
 
         if (p.type == 0)
-        { // Traffic Light
-            glColor3f(1.0f, 1.0f, 0.0f);
-            // Pulsating Animation
-            float scale = 1.0f + 0.2f * sin(animationTime);
-            glScalef(scale, scale, scale);
-            glutSolidCube(1.0f);
+        { // No Traffic power-up
+            // Floating animation
+            float offset = 0.2f * sin(animationTime);
+            glTranslatef(p.x, 1.5f + offset, p.z);
+            glRotatef(p.rotation, 0, 1, 0);
+
+            if (noTrafficModelLoaded)
+            {
+                glEnable(GL_LIGHTING);
+                glEnable(GL_TEXTURE_2D);
+                glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+                // Yellow material for No Traffic
+                GLfloat matSpecular[] = {1.0f, 1.0f, 0.5f, 1.0f};
+                GLfloat matShininess[] = {80.0f};
+                GLfloat matAmbient[] = {0.6f, 0.5f, 0.0f, 1.0f};
+                GLfloat matDiffuse[] = {1.0f, 0.9f, 0.0f, 1.0f};
+                GLfloat matEmission[] = {0.3f, 0.25f, 0.0f, 1.0f};
+
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, matDiffuse);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, matEmission);
+
+                glColor3f(1.0f, 0.9f, 0.0f);
+                noTrafficModel.Draw();
+
+                // Reset material
+                GLfloat defaultEmission[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, defaultEmission);
+            }
+            else
+            {
+                // Fallback
+                glColor3f(1.0f, 1.0f, 0.0f);
+                float scale = 1.0f + 0.2f * sin(animationTime);
+                glScalef(scale, scale, scale);
+                glutSolidCube(1.0f);
+            }
         }
         else
-        { // Boost
-            glColor3f(0.0f, 1.0f, 1.0f);
-            // Floating Animation
-            float offset = 0.5f * sin(animationTime);
-            glTranslatef(0.0f, offset, 0.0f);
-            glutSolidCone(0.5f, 1.0f, 10, 2);
+        { // Boost power-up
+            // Floating animation
+            float offset = 0.2f * sin(animationTime);
+            glTranslatef(p.x, 2.0f + offset, p.z);
+            glRotatef(p.rotation, 0, 1, 0);
+
+            if (boostModelLoaded)
+            {
+                glEnable(GL_LIGHTING);
+                glEnable(GL_TEXTURE_2D);
+                glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+                // Cyan material for Boost
+                GLfloat matSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+                GLfloat matShininess[] = {80.0f};
+                GLfloat matAmbient[] = {0.0f, 0.6f, 0.6f, 1.0f};
+                GLfloat matDiffuse[] = {0.0f, 1.0f, 1.0f, 1.0f};
+                GLfloat matEmission[] = {0.0f, 0.3f, 0.3f, 1.0f};
+
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, matDiffuse);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, matEmission);
+
+                glColor3f(0.0f, 1.0f, 1.0f);
+
+                // Rotate 180 degrees to face correct direction
+                glRotatef(180.0f, 0, 1, 0);
+
+                // Draw first arrow
+                glPushMatrix();
+                glTranslatef(0.0f, 0.0f, -1.0f);
+                boostModel.Draw();
+                glPopMatrix();
+
+                // Draw second arrow (double-arrow effect)
+                glPushMatrix();
+                glTranslatef(0.0f, 0.0f, 1.0f);
+                boostModel.Draw();
+                glPopMatrix();
+
+                // Reset material
+                GLfloat defaultEmission[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, defaultEmission);
+            }
+            else
+            {
+                // Fallback
+                glColor3f(0.0f, 1.0f, 1.0f);
+                float floatOffset = 0.5f * sin(animationTime);
+                glTranslatef(0.0f, floatOffset, 0.0f);
+                glutSolidCone(0.5f, 1.0f, 10, 2);
+            }
         }
 
         glPopMatrix();

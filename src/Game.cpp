@@ -3,6 +3,8 @@
 #include "Level2.h"
 #include <cmath>
 #include <iostream>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -53,6 +55,7 @@ void Game::update()
 
         if (currentLevel->checkCollisions(playerCar))
         {
+            PlaySound(TEXT("Sounds/crash.wav"), NULL, SND_FILENAME | SND_ASYNC);
             currentState = GAME_OVER;
         }
 
@@ -82,6 +85,7 @@ void Game::update()
 
         if (currentLevel->checkCollisions(playerCar))
         {
+            PlaySound(TEXT("Sounds/crash.wav"), NULL, SND_FILENAME | SND_ASYNC);
             currentState = GAME_OVER;
         }
 
