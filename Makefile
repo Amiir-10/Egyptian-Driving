@@ -31,7 +31,7 @@ ifeq ($(GITHUB_ACTIONS),true)
 	LIB_DIR = lib/x64
 endif
 
-LDFLAGS = -L$(LIB_DIR) -lfreeglut -lopengl32 -lglu32
+LDFLAGS = -L$(LIB_DIR) -lfreeglut -lopengl32 -lglu32 -lwinmm
 
 
 .PHONY: all
