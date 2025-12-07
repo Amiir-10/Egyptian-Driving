@@ -44,11 +44,6 @@ private:
     // Power-up 3D models
     Model_3DS noTrafficModel;
     bool noTrafficModelLoaded;
-    // No Traffic power-up 3D model
-    Model_3DS noTrafficModel;
-    bool noTrafficModelLoaded;
-
-    // Boost power-up 3D model
     Model_3DS boostModel;
     bool boostModelLoaded;
 
