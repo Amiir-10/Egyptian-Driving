@@ -70,6 +70,7 @@ void Level1::init()
 
         if (noTrafficModel.numObjects > 0 && noTrafficModel.Objects != NULL &&
             noTrafficModel.Objects[0].numVerts > 0 && noTrafficModel.Objects[0].Vertexes != NULL)
+        if (noTrafficModel.numObjects > 0 && noTrafficModel.Objects[0].numVerts > 0)
         {
             noTrafficModelLoaded = true;
 
