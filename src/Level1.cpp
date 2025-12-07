@@ -16,6 +16,7 @@ Level1::Level1()
     animationTime = 0.0f;
     obstacleModelLoaded = false;
     noTrafficModelLoaded = false;
+    boostModelLoaded = false;
 }
 
 void Level1::init()
@@ -67,7 +68,8 @@ void Level1::init()
     {
         noTrafficModel.Load((char *)"Models/no_traffic/no_traffic.3ds");
 
-        if (noTrafficModel.numObjects > 0 && noTrafficModel.Objects[0].numVerts > 0)
+        if (noTrafficModel.numObjects > 0 && noTrafficModel.Objects != NULL &&
+            noTrafficModel.Objects[0].numVerts > 0 && noTrafficModel.Objects[0].Vertexes != NULL)
         {
             noTrafficModelLoaded = true;
 
@@ -108,6 +110,63 @@ void Level1::init()
         else
         {
             printf("Warning: No Traffic model failed to load or has no objects/vertices\n");
+            fflush(stdout);
+        }
+    }
+
+    // Load Boost power-up 3D model (only once)
+    if (!boostModelLoaded)
+    {
+        printf("Attempting to load Boost model...\n");
+        fflush(stdout);
+
+        boostModel.Load((char *)"Models/boost/boost.3ds");
+
+        printf("Boost model Load() returned. numObjects=%d, Objects=%s\n",
+               boostModel.numObjects, boostModel.Objects ? "valid" : "NULL");
+        fflush(stdout);
+
+        if (boostModel.numObjects > 0 && boostModel.Objects != NULL &&
+            boostModel.Objects[0].numVerts > 0 && boostModel.Objects[0].Vertexes != NULL)
+        {
+            boostModelLoaded = true;
+
+            // Print first vertex to debug scale
+            float firstX = boostModel.Objects[0].Vertexes[0];
+            float firstY = boostModel.Objects[0].Vertexes[1];
+            float firstZ = boostModel.Objects[0].Vertexes[2];
+            printf("Boost model first vertex: (%.2f, %.2f, %.2f)\n", firstX, firstY, firstZ);
+
+            // Determine scale based on vertex magnitude
+            float magnitude = sqrt(firstX * firstX + firstY * firstY + firstZ * firstZ);
+            if (magnitude > 1000.0f)
+            {
+                boostModel.scale = 0.002f; // Large model
+            }
+            else if (magnitude > 100.0f)
+            {
+                boostModel.scale = 0.02f; // Medium model
+            }
+            else
+            {
+                boostModel.scale = 4.0f; // Small model - increased for visibility
+            }
+            boostModel.lit = true;
+
+            // Auto-calculate offset to center the model (X and Z only)
+            boostModel.pos.x = -firstX * boostModel.scale;
+            boostModel.pos.y = 0.0f; // Don't offset Y
+            boostModel.pos.z = -firstZ * boostModel.scale;
+
+            printf("Boost model loaded: %d objects, %d materials\n",
+                   boostModel.numObjects, boostModel.numMaterials);
+            printf("Boost scale: %.3f, offset: (%.2f, %.2f, %.2f)\n",
+                   boostModel.scale, boostModel.pos.x, boostModel.pos.y, boostModel.pos.z);
+            fflush(stdout);
+        }
+        else
+        {
+            printf("Warning: Boost model failed to load or has no objects/vertices\n");
             fflush(stdout);
         }
     }
@@ -403,7 +462,7 @@ void Level1::drawCollectibles()
             continue;
 
         glPushMatrix();
-        glTranslatef(p.x, 1.0f, p.z);
+        glTranslatef(p.x, 2.0f, p.z); // Raised height for power-ups
         glRotatef(p.rotation, 0, 1, 0);
 
         if (p.type == 0)
@@ -454,12 +513,64 @@ void Level1::drawCollectibles()
             }
         }
         else
-        { // Boost
-            glColor3f(0.0f, 1.0f, 1.0f);
-            // Floating Animation
-            float offset = 0.5f * sin(animationTime);
+        { // Boost power-up
+            // Floating Animation (reduced range)
+            float offset = 0.2f * sin(animationTime);
             glTranslatef(0.0f, offset, 0.0f);
-            glutSolidCone(0.5f, 1.0f, 10, 2);
+
+            if (boostModelLoaded)
+            {
+                glEnable(GL_LIGHTING);
+                glEnable(GL_TEXTURE_2D);
+
+                // Ensure texture modulation works correctly
+                glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+                // Set up bright cyan material for boost
+                GLfloat matSpecular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+                GLfloat matShininess[] = {80.0f};
+                GLfloat matAmbient[] = {0.0f, 0.6f, 0.6f, 1.0f};  // Bright cyan ambient
+                GLfloat matDiffuse[] = {0.0f, 1.0f, 1.0f, 1.0f};  // Pure cyan diffuse
+                GLfloat matEmission[] = {0.0f, 0.3f, 0.3f, 1.0f}; // Cyan glow
+
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, matAmbient);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, matDiffuse);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, matEmission);
+
+                // Pure cyan color
+                glColor3f(0.0f, 1.0f, 1.0f);
+
+                // Rotate 180 degrees to face correct direction
+                glRotatef(180.0f, 0, 1, 0);
+
+                // Draw first arrow
+                glPushMatrix();
+                glTranslatef(0.0f, 0.0f, -1.0f); // Offset backward
+                boostModel.Draw();
+                glPopMatrix();
+
+                // Draw second arrow (in front of first)
+                glPushMatrix();
+                glTranslatef(0.0f, 0.0f, 1.0f); // Offset forward
+                boostModel.Draw();
+                glPopMatrix();
+
+                // Reset material properties
+                GLfloat defaultSpecular[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                GLfloat defaultShininess[] = {0.0f};
+                GLfloat defaultEmission[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, defaultSpecular);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, defaultShininess);
+                glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, defaultEmission);
+            }
+            else
+            {
+                // Fallback to cyan cone
+                glColor3f(0.0f, 1.0f, 1.0f);
+                glutSolidCone(0.5f, 1.0f, 10, 2);
+            }
         }
 
         glPopMatrix();
