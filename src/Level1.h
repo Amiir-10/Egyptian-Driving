@@ -45,6 +45,10 @@ private:
     Model_3DS noTrafficModel;
     bool noTrafficModelLoaded;
 
+    // Boost power-up 3D model
+    Model_3DS boostModel;
+    bool boostModelLoaded;
+
     void spawnCar();
     void drawRoad(float playerZ);
     void drawGround(float playerZ);
